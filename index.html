@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#396a5c" />
+    <title>초록 캘린더</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">MY CALENDAR</p>
+          <h1>초록 캘린더</h1>
+        </div>
+        <button class="icon-button" id="todayButton" type="button" aria-label="오늘로 이동" title="오늘로 이동">◎</button>
+      </header>
+
+      <section class="calendar-panel" aria-label="월간 캘린더">
+        <div class="month-controls">
+          <button class="nav-button" id="previousMonth" type="button" aria-label="이전 달">‹</button>
+          <h2 id="monthTitle" aria-live="polite"></h2>
+          <button class="nav-button" id="nextMonth" type="button" aria-label="다음 달">›</button>
+        </div>
+
+        <div class="weekdays" aria-hidden="true">
+          <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+        </div>
+        <div class="calendar-grid" id="calendarGrid" role="grid" aria-label="날짜 선택"></div>
+      </section>
+
+      <section class="agenda-panel" aria-labelledby="agendaTitle">
+        <div class="agenda-heading">
+          <div>
+            <p class="eyebrow" id="selectedDateLabel">선택한 날짜</p>
+            <h2 id="agendaTitle">일정을 선택하세요</h2>
+          </div>
+          <span class="event-count" id="eventCount">0개</span>
+        </div>
+        <div class="event-list" id="eventList" aria-live="polite"></div>
+      </section>
+
+      <section class="composer" aria-labelledby="composerTitle">
+        <div class="composer-heading">
+          <div>
+            <p class="eyebrow">NEW EVENT</p>
+            <h2 id="composerTitle">일정 추가</h2>
+          </div>
+          <button class="close-composer" id="closeComposer" type="button" aria-label="일정 추가 닫기">×</button>
+        </div>
+        <form id="eventForm">
+          <label>
+            일정 이름
+            <input id="eventTitle" name="title" type="text" placeholder="예: 팀 미팅" maxlength="42" required />
+          </label>
+          <div class="form-row">
+            <label>
+              날짜
+              <input id="eventDate" name="date" type="date" required />
+            </label>
+            <label>
+              시간
+              <input id="eventTime" name="time" type="time" value="09:00" />
+            </label>
+          </div>
+          <fieldset>
+            <legend>색상</legend>
+            <div class="color-options">
+              <label class="color-choice"><input type="radio" name="color" value="mint" checked /><span class="color-swatch mint"></span><span class="sr-only">민트</span></label>
+              <label class="color-choice"><input type="radio" name="color" value="coral" /><span class="color-swatch coral"></span><span class="sr-only">코랄</span></label>
+              <label class="color-choice"><input type="radio" name="color" value="violet" /><span class="color-swatch violet"></span><span class="sr-only">보라</span></label>
+              <label class="color-choice"><input type="radio" name="color" value="sun" /><span class="color-swatch sun"></span><span class="sr-only">노랑</span></label>
+            </div>
+          </fieldset>
+          <button class="save-button" type="submit">일정 저장</button>
+        </form>
+      </section>
+
+      <button class="add-button" id="openComposer" type="button" aria-label="새 일정 추가">+</button>
+    </main>
+    <template id="eventTemplate">
+      <article class="event-item">
+        <span class="event-marker"></span>
+        <div class="event-copy">
+          <strong></strong>
+          <span></span>
+        </div>
+        <button type="button" class="delete-button" aria-label="일정 삭제">삭제</button>
+      </article>
+    </template>
+    <script src="app.js"></script>
+  </body>
+</html>
