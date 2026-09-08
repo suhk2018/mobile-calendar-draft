@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">초록 캘린더</title>
-  <rect width="512" height="512" rx="116" fill="#396a5c"/>
+  <title id="title">캘린더</title>
+  <rect width="512" height="512" rx="116" fill="#3182f6"/>
   <rect x="92" y="122" width="328" height="298" rx="54" fill="#fbfcfb"/>
   <path d="M92 194h328" stroke="#d9eee7" stroke-width="28"/>
   <path d="M168 90v76M344 90v76" stroke="#fbfcfb" stroke-width="30" stroke-linecap="round"/>
-  <circle cx="178" cy="278" r="23" fill="#4d9580"/>
-  <circle cx="256" cy="278" r="23" fill="#4d9580"/>
-  <circle cx="334" cy="278" r="23" fill="#4d9580"/>
-  <circle cx="178" cy="350" r="23" fill="#4d9580"/>
+  <circle cx="178" cy="278" r="23" fill="#3182f6"/>
+  <circle cx="256" cy="278" r="23" fill="#3182f6"/>
+  <circle cx="334" cy="278" r="23" fill="#3182f6"/>
+  <circle cx="178" cy="350" r="23" fill="#3182f6"/>
   <circle cx="256" cy="350" r="23" fill="#de776b"/>
 </svg>

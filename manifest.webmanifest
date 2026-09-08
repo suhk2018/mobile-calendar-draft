@@ -1,6 +1,6 @@
 {
   "id": "./",
-  "name": "초록 캘린더",
+  "name": "캘린더",
   "short_name": "캘린더",
   "description": "휴대폰 홈 화면에서 앱처럼 사용하는 간단한 개인 캘린더",
   "lang": "ko-KR",
@@ -9,7 +9,7 @@
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#f2f6f4",
-  "theme_color": "#396a5c",
+  "theme_color": "#3182f6",
   "icons": [
     {
       "src": "icon.svg",

@@ -1,19 +1,32 @@
 const calendarGrid = document.querySelector('#calendarGrid');
+const calendarViewport = document.querySelector('#calendarViewport');
 const monthTitle = document.querySelector('#monthTitle');
 const selectedDateLabel = document.querySelector('#selectedDateLabel');
 const agendaTitle = document.querySelector('#agendaTitle');
 const eventCount = document.querySelector('#eventCount');
 const eventList = document.querySelector('#eventList');
 const eventForm = document.querySelector('#eventForm');
-const eventDate = document.querySelector('#eventDate');
+const eventStartDate = document.querySelector('#eventStartDate');
+const eventEndDate = document.querySelector('#eventEndDate');
 const eventTitle = document.querySelector('#eventTitle');
+const formError = document.querySelector('#formError');
 const composer = document.querySelector('.composer');
+const composerBackdrop = document.querySelector('#composerBackdrop');
 const eventTemplate = document.querySelector('#eventTemplate');
+const rangeModeButton = document.querySelector('#rangeModeButton');
+const rangeStatus = document.querySelector('#rangeStatus');
+const themeButton = document.querySelector('#themeButton');
 
 const storageKey = 'green-calendar-events-v1';
+const themeStorageKey = 'calendar-theme-v1';
 const today = startOfDay(new Date());
 let cursor = new Date(today.getFullYear(), today.getMonth(), 1);
-let selectedDate = new Date(today);
+let selectedStartDate = new Date(today);
+let selectedEndDate = new Date(today);
+let rangeMode = false;
+let rangeAnchor = null;
+let ignoreClickUntil = 0;
+let swipeStart = null;
 let events = loadEvents();
 
 function startOfDay(date) {
@@ -29,6 +42,22 @@ function fromKey(key) {
   return new Date(year, month - 1, day);
 }
 
+function eventStart(event) {
+  return event.startDate || event.date;
+}
+
+function eventEnd(event) {
+  return event.endDate || event.startDate || event.date;
+}
+
+function eventCoversDate(event, key) {
+  return eventStart(event) <= key && eventEnd(event) >= key;
+}
+
+function eventOverlapsRange(event, startKey, endKey) {
+  return eventStart(event) <= endKey && eventEnd(event) >= startKey;
+}
+
 function loadEvents() {
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
@@ -42,7 +71,7 @@ function demoEvents() {
   const thisMonth = new Date();
   const day = Math.min(12, new Date(thisMonth.getFullYear(), thisMonth.getMonth() + 1, 0).getDate());
   return [
-    { id: 'welcome', date: toKey(new Date(thisMonth.getFullYear(), thisMonth.getMonth(), day)), time: '10:00', title: '캘린더 초안 확인', color: 'mint' },
+    { id: 'welcome', date: toKey(new Date(thisMonth.getFullYear(), thisMonth.getMonth(), day)), time: '10:00', title: '캘린더 확인하기', color: 'mint' },
   ];
 }
 
@@ -54,13 +83,35 @@ function sameDay(a, b) {
   return toKey(a) === toKey(b);
 }
 
+function daysInSelection() {
+  return Math.round((selectedEndDate - selectedStartDate) / 86400000) + 1;
+}
+
 function formatLongDate(date) {
   return new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }).format(date);
+}
+
+function formatShortDate(date) {
+  return new Intl.DateTimeFormat('ko-KR', { month: 'short', day: 'numeric' }).format(date);
+}
+
+function formatSelectedRange() {
+  if (sameDay(selectedStartDate, selectedEndDate)) return formatLongDate(selectedStartDate);
+  return `${formatShortDate(selectedStartDate)} – ${formatShortDate(selectedEndDate)}`;
+}
+
+function formatEventDate(event) {
+  const start = eventStart(event);
+  const end = eventEnd(event);
+  if (start === end) return formatShortDate(fromKey(start));
+  return `${formatShortDate(fromKey(start))} – ${formatShortDate(fromKey(end))}`;
 }
 
 function renderCalendar() {
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
+  const selectedStartKey = toKey(selectedStartDate);
+  const selectedEndKey = toKey(selectedEndDate);
   monthTitle.textContent = `${year}년 ${month + 1}월`;
   calendarGrid.replaceChildren();
 
@@ -68,7 +119,7 @@ function renderCalendar() {
   for (let index = 0; index < 42; index += 1) {
     const date = new Date(firstVisible.getFullYear(), firstVisible.getMonth(), firstVisible.getDate() + index);
     const key = toKey(date);
-    const dayEvents = events.filter((event) => event.date === key);
+    const dayEvents = events.filter((event) => eventCoversDate(event, key));
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'day-cell';
@@ -76,7 +127,9 @@ function renderCalendar() {
     button.setAttribute('aria-label', `${formatLongDate(date)}${dayEvents.length ? `, 일정 ${dayEvents.length}개` : ''}`);
     if (date.getMonth() !== month) button.classList.add('is-outside');
     if (sameDay(date, today)) button.classList.add('is-today');
-    if (sameDay(date, selectedDate)) button.classList.add('is-selected');
+    if (key >= selectedStartKey && key <= selectedEndKey) button.classList.add('is-in-range');
+    if (key === selectedStartKey) button.classList.add('is-range-start');
+    if (key === selectedEndKey) button.classList.add('is-range-end');
 
     const number = document.createElement('span');
     number.className = 'day-number';
@@ -89,22 +142,26 @@ function renderCalendar() {
       dots.append(dot);
     });
     button.append(number, dots);
-    button.addEventListener('click', () => selectDate(date));
+    button.addEventListener('click', () => {
+      if (Date.now() < ignoreClickUntil) return;
+      handleDateSelection(date);
+    });
     calendarGrid.append(button);
   }
 }
 
 function renderAgenda() {
-  const key = toKey(selectedDate);
-  const dayEvents = events
-    .filter((event) => event.date === key)
-    .sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
-  selectedDateLabel.textContent = formatLongDate(selectedDate);
-  agendaTitle.textContent = sameDay(selectedDate, today) ? '오늘의 일정' : '선택한 날짜의 일정';
-  eventCount.textContent = `${dayEvents.length}개`;
+  const startKey = toKey(selectedStartDate);
+  const endKey = toKey(selectedEndDate);
+  const selectedEvents = events
+    .filter((event) => eventOverlapsRange(event, startKey, endKey))
+    .sort((a, b) => eventStart(a).localeCompare(eventStart(b)) || (a.time || '99:99').localeCompare(b.time || '99:99'));
+  selectedDateLabel.textContent = formatSelectedRange();
+  agendaTitle.textContent = daysInSelection() > 1 ? '선택한 기간의 일정' : sameDay(selectedStartDate, today) ? '오늘의 일정' : '선택한 날짜의 일정';
+  eventCount.textContent = `${selectedEvents.length}개`;
   eventList.replaceChildren();
 
-  if (dayEvents.length === 0) {
+  if (selectedEvents.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'empty-state';
     empty.textContent = '아직 일정이 없어요. 아래 + 버튼으로 추가해 보세요.';
@@ -112,11 +169,12 @@ function renderAgenda() {
     return;
   }
 
-  dayEvents.forEach((event) => {
+  selectedEvents.forEach((event) => {
     const item = eventTemplate.content.firstElementChild.cloneNode(true);
     item.querySelector('.event-marker').classList.add(event.color);
     item.querySelector('strong').textContent = event.title;
-    item.querySelector('.event-copy span').textContent = event.time || '시간 미정';
+    const timeText = event.time || '시간 미정';
+    item.querySelector('.event-copy span').textContent = `${formatEventDate(event)} · ${timeText}`;
     const deleteButton = item.querySelector('.delete-button');
     deleteButton.addEventListener('click', () => {
       events = events.filter((savedEvent) => savedEvent.id !== event.id);
@@ -127,65 +185,178 @@ function renderAgenda() {
   });
 }
 
-function selectDate(date) {
-  selectedDate = startOfDay(date);
-  cursor = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-  eventDate.value = toKey(selectedDate);
-  render();
-}
-
 function render() {
   renderCalendar();
   renderAgenda();
 }
 
+function handleDateSelection(date) {
+  const chosenDate = startOfDay(date);
+  if (!rangeMode) {
+    selectedStartDate = chosenDate;
+    selectedEndDate = chosenDate;
+    cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
+    rangeStatus.textContent = '날짜를 눌러 일정을 확인하세요';
+    render();
+    return;
+  }
+
+  if (!rangeAnchor) {
+    rangeAnchor = chosenDate;
+    selectedStartDate = chosenDate;
+    selectedEndDate = chosenDate;
+    cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
+    rangeStatus.textContent = '마지막 날짜를 선택하세요';
+    render();
+    return;
+  }
+
+  selectedStartDate = chosenDate < rangeAnchor ? chosenDate : rangeAnchor;
+  selectedEndDate = chosenDate < rangeAnchor ? rangeAnchor : chosenDate;
+  rangeAnchor = null;
+  rangeMode = false;
+  rangeModeButton.setAttribute('aria-pressed', 'false');
+  rangeStatus.textContent = `${daysInSelection()}일이 선택됐어요`;
+  cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
+  render();
+}
+
+function toggleRangeMode() {
+  rangeMode = !rangeMode;
+  rangeAnchor = null;
+  rangeModeButton.setAttribute('aria-pressed', String(rangeMode));
+  rangeStatus.textContent = rangeMode ? '시작 날짜를 선택하세요' : '날짜를 눌러 일정을 확인하세요';
+}
+
+function animateCalendar(direction) {
+  const className = direction > 0 ? 'is-sliding-left' : 'is-sliding-right';
+  calendarViewport.classList.remove('is-sliding-left', 'is-sliding-right');
+  requestAnimationFrame(() => calendarViewport.classList.add(className));
+  setTimeout(() => calendarViewport.classList.remove(className), 240);
+}
+
+function changeMonth(offset) {
+  cursor = new Date(cursor.getFullYear(), cursor.getMonth() + offset, 1);
+  renderCalendar();
+  animateCalendar(offset);
+}
+
 function openComposer() {
-  eventDate.value = toKey(selectedDate);
+  eventStartDate.value = toKey(selectedStartDate);
+  eventEndDate.value = toKey(selectedEndDate);
+  eventEndDate.min = eventStartDate.value;
+  formError.hidden = true;
+  composerBackdrop.hidden = false;
   composer.classList.add('is-open');
-  setTimeout(() => eventTitle.focus(), 160);
+  setTimeout(() => eventTitle.focus(), 180);
 }
 
 function closeComposer() {
   composer.classList.remove('is-open');
+  setTimeout(() => {
+    if (!composer.classList.contains('is-open')) composerBackdrop.hidden = true;
+  }, 220);
 }
 
-document.querySelector('#previousMonth').addEventListener('click', () => {
-  cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
-  renderCalendar();
-});
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const isDark = theme === 'dark';
+  themeButton.textContent = isDark ? '☀' : '☾';
+  themeButton.setAttribute('aria-label', isDark ? '라이트 모드로 전환' : '다크 모드로 전환');
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', isDark ? '#101214' : '#3182f6');
+}
 
-document.querySelector('#nextMonth').addEventListener('click', () => {
-  cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-  renderCalendar();
-});
+function toggleTheme() {
+  const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(themeStorageKey, nextTheme);
+  applyTheme(nextTheme);
+}
 
-document.querySelector('#todayButton').addEventListener('click', () => selectDate(today));
+document.querySelector('#previousMonth').addEventListener('click', () => changeMonth(-1));
+document.querySelector('#nextMonth').addEventListener('click', () => changeMonth(1));
+document.querySelector('#todayButton').addEventListener('click', () => {
+  selectedStartDate = new Date(today);
+  selectedEndDate = new Date(today);
+  cursor = new Date(today.getFullYear(), today.getMonth(), 1);
+  rangeMode = false;
+  rangeAnchor = null;
+  rangeModeButton.setAttribute('aria-pressed', 'false');
+  rangeStatus.textContent = '오늘로 이동했어요';
+  render();
+});
 document.querySelector('#openComposer').addEventListener('click', openComposer);
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
+composerBackdrop.addEventListener('click', closeComposer);
+rangeModeButton.addEventListener('click', toggleRangeMode);
+themeButton.addEventListener('click', toggleTheme);
+
+calendarViewport.addEventListener('pointerdown', (event) => {
+  if (!event.isPrimary) return;
+  swipeStart = { x: event.clientX, y: event.clientY };
+});
+
+calendarViewport.addEventListener('pointerup', (event) => {
+  if (!swipeStart || !event.isPrimary) return;
+  const deltaX = event.clientX - swipeStart.x;
+  const deltaY = event.clientY - swipeStart.y;
+  swipeStart = null;
+  if (Math.abs(deltaX) < 52 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) return;
+  ignoreClickUntil = Date.now() + 350;
+  changeMonth(deltaX < 0 ? 1 : -1);
+});
+
+calendarViewport.addEventListener('pointercancel', () => {
+  swipeStart = null;
+});
+
+eventStartDate.addEventListener('change', () => {
+  eventEndDate.min = eventStartDate.value;
+  if (!eventEndDate.value || eventEndDate.value < eventStartDate.value) eventEndDate.value = eventStartDate.value;
+  formError.hidden = true;
+});
+
+eventEndDate.addEventListener('change', () => {
+  formError.hidden = true;
+});
 
 eventForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const form = new FormData(eventForm);
-  const date = String(form.get('date'));
+  const startDate = String(form.get('startDate'));
+  const endDate = String(form.get('endDate'));
   const title = String(form.get('title')).trim();
-  if (!date || !title) return;
+  if (!startDate || !endDate || !title) return;
+  if (endDate < startDate) {
+    formError.textContent = '종료일은 시작일보다 빠를 수 없어요.';
+    formError.hidden = false;
+    return;
+  }
 
   events.push({
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    date,
+    date: startDate,
+    startDate,
+    endDate,
     time: String(form.get('time')),
     title,
     color: String(form.get('color')),
   });
   saveEvents();
+  selectedStartDate = fromKey(startDate);
+  selectedEndDate = fromKey(endDate);
+  cursor = new Date(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), 1);
   eventForm.reset();
   eventForm.elements.color.value = 'mint';
-  selectedDate = fromKey(date);
-  cursor = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
   closeComposer();
+  rangeStatus.textContent = daysInSelection() > 1 ? `${daysInSelection()}일 일정이 추가됐어요` : '일정이 추가됐어요';
   render();
 });
 
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && composer.classList.contains('is-open')) closeComposer();
+});
+
+applyTheme(document.documentElement.dataset.theme || 'light');
 render();
 
 if ('serviceWorker' in navigator) {

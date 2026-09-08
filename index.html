@@ -3,24 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#396a5c" />
+    <meta name="theme-color" content="#3182f6" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="초록 캘린더" />
+    <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <title>초록 캘린더</title>
+    <title>캘린더</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
+    <script>
+      try {
+        const savedTheme = localStorage.getItem('calendar-theme-v1');
+        document.documentElement.dataset.theme = savedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      } catch {}
+    </script>
   </head>
   <body>
     <main class="app-shell">
       <header class="topbar">
         <div>
           <p class="eyebrow">MY CALENDAR</p>
-          <h1>초록 캘린더</h1>
+          <h1>캘린더</h1>
         </div>
-        <button class="icon-button" id="todayButton" type="button" aria-label="오늘로 이동" title="오늘로 이동">◎</button>
+        <div class="top-actions">
+          <button class="text-button" id="todayButton" type="button">오늘</button>
+          <button class="icon-button" id="themeButton" type="button" aria-label="다크 모드로 전환">☾</button>
+        </div>
       </header>
 
       <section class="calendar-panel" aria-label="월간 캘린더">
@@ -30,10 +39,17 @@
           <button class="nav-button" id="nextMonth" type="button" aria-label="다음 달">›</button>
         </div>
 
-        <div class="weekdays" aria-hidden="true">
-          <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+        <div class="calendar-actions">
+          <button class="range-button" id="rangeModeButton" type="button" aria-pressed="false">기간 선택</button>
+          <p id="rangeStatus" aria-live="polite">날짜를 눌러 일정을 확인하세요</p>
         </div>
-        <div class="calendar-grid" id="calendarGrid" role="grid" aria-label="날짜 선택"></div>
+
+        <div class="calendar-viewport" id="calendarViewport">
+          <div class="weekdays" aria-hidden="true">
+            <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+          </div>
+          <div class="calendar-grid" id="calendarGrid" role="grid" aria-label="날짜 선택"></div>
+        </div>
       </section>
 
       <section class="agenda-panel" aria-labelledby="agendaTitle">
@@ -47,10 +63,11 @@
         <div class="event-list" id="eventList" aria-live="polite"></div>
       </section>
 
-      <section class="composer" aria-labelledby="composerTitle">
+      <div class="composer-backdrop" id="composerBackdrop" hidden></div>
+      <section class="composer" aria-labelledby="composerTitle" aria-modal="true" role="dialog">
         <div class="composer-heading">
           <div>
-            <p class="eyebrow">NEW EVENT</p>
+            <p class="eyebrow">NEW SCHEDULE</p>
             <h2 id="composerTitle">일정 추가</h2>
           </div>
           <button class="close-composer" id="closeComposer" type="button" aria-label="일정 추가 닫기">×</button>
@@ -60,16 +77,21 @@
             일정 이름
             <input id="eventTitle" name="title" type="text" placeholder="예: 팀 미팅" maxlength="42" required />
           </label>
-          <div class="form-row">
+          <div class="form-row date-row">
             <label>
-              날짜
-              <input id="eventDate" name="date" type="date" required />
+              시작일
+              <input id="eventStartDate" name="startDate" type="date" required />
             </label>
             <label>
-              시간
-              <input id="eventTime" name="time" type="time" value="09:00" />
+              종료일
+              <input id="eventEndDate" name="endDate" type="date" required />
             </label>
           </div>
+          <label>
+            시간
+            <input id="eventTime" name="time" type="time" value="09:00" />
+          </label>
+          <p class="form-error" id="formError" role="alert" hidden></p>
           <fieldset>
             <legend>색상</legend>
             <div class="color-options">
