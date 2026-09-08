@@ -13,7 +13,6 @@ const formError = document.querySelector('#formError');
 const composer = document.querySelector('.composer');
 const composerBackdrop = document.querySelector('#composerBackdrop');
 const eventTemplate = document.querySelector('#eventTemplate');
-const rangeModeButton = document.querySelector('#rangeModeButton');
 const rangeStatus = document.querySelector('#rangeStatus');
 const themeButton = document.querySelector('#themeButton');
 
@@ -28,6 +27,8 @@ let rangeAnchor = null;
 let ignoreClickUntil = 0;
 let swipeStart = null;
 let touchSwipeStart = null;
+let longPressTimer = null;
+let longPressActivated = false;
 let events = loadEvents();
 
 function startOfDay(date) {
@@ -124,6 +125,7 @@ function renderCalendar() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'day-cell';
+    button.dataset.date = key;
     button.setAttribute('role', 'gridcell');
     button.setAttribute('aria-label', `${formatLongDate(date)}${dayEvents.length ? `, 일정 ${dayEvents.length}개` : ''}`);
     if (date.getMonth() !== month) button.classList.add('is-outside');
@@ -197,7 +199,7 @@ function handleDateSelection(date) {
     selectedStartDate = chosenDate;
     selectedEndDate = chosenDate;
     cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
-    rangeStatus.textContent = '날짜를 눌러 일정을 확인하세요';
+    rangeStatus.textContent = '날짜를 길게 누르면 기간을 선택할 수 있어요';
     render();
     return;
   }
@@ -216,17 +218,21 @@ function handleDateSelection(date) {
   selectedEndDate = chosenDate < rangeAnchor ? rangeAnchor : chosenDate;
   rangeAnchor = null;
   rangeMode = false;
-  rangeModeButton.setAttribute('aria-pressed', 'false');
   rangeStatus.textContent = `${daysInSelection()}일이 선택됐어요`;
   cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
   render();
 }
 
-function toggleRangeMode() {
-  rangeMode = !rangeMode;
-  rangeAnchor = null;
-  rangeModeButton.setAttribute('aria-pressed', String(rangeMode));
-  rangeStatus.textContent = rangeMode ? '시작 날짜를 선택하세요' : '날짜를 눌러 일정을 확인하세요';
+function startRangeSelection(date) {
+  const chosenDate = startOfDay(date);
+  rangeMode = true;
+  rangeAnchor = chosenDate;
+  selectedStartDate = chosenDate;
+  selectedEndDate = chosenDate;
+  cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
+  rangeStatus.textContent = '마지막 날짜를 선택하세요';
+  ignoreClickUntil = Date.now() + 500;
+  render();
 }
 
 function animateCalendar(direction) {
@@ -281,32 +287,69 @@ document.querySelector('#todayButton').addEventListener('click', () => {
   cursor = new Date(today.getFullYear(), today.getMonth(), 1);
   rangeMode = false;
   rangeAnchor = null;
-  rangeModeButton.setAttribute('aria-pressed', 'false');
   rangeStatus.textContent = '오늘로 이동했어요';
   render();
 });
 document.querySelector('#openComposer').addEventListener('click', openComposer);
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
 composerBackdrop.addEventListener('click', closeComposer);
-rangeModeButton.addEventListener('click', toggleRangeMode);
 themeButton.addEventListener('click', toggleTheme);
 
-calendarViewport.addEventListener('pointerdown', (event) => {
-  if (!event.isPrimary) return;
-  swipeStart = { x: event.clientX, y: event.clientY };
-});
+function beginCalendarGesture(x, y, target) {
+  swipeStart = { x, y };
+  longPressActivated = false;
+  const dayCell = target.closest('.day-cell');
+  if (!dayCell) return;
+  longPressTimer = setTimeout(() => {
+    longPressTimer = null;
+    longPressActivated = true;
+    startRangeSelection(fromKey(dayCell.dataset.date));
+    navigator.vibrate?.(30);
+  }, 520);
+}
 
-calendarViewport.addEventListener('pointerup', (event) => {
-  if (!swipeStart || !event.isPrimary) return;
-  const deltaX = event.clientX - swipeStart.x;
-  const deltaY = event.clientY - swipeStart.y;
+function moveCalendarGesture(x, y) {
+  if (!swipeStart || !longPressTimer) return;
+  if (Math.hypot(x - swipeStart.x, y - swipeStart.y) > 10) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+}
+
+function endCalendarGesture(x, y) {
+  if (longPressTimer) clearTimeout(longPressTimer);
+  longPressTimer = null;
+  if (!swipeStart) return;
+  const deltaX = x - swipeStart.x;
+  const deltaY = y - swipeStart.y;
   swipeStart = null;
+  if (longPressActivated) {
+    longPressActivated = false;
+    return;
+  }
   if (Math.abs(deltaX) < 52 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) return;
   ignoreClickUntil = Date.now() + 350;
   changeMonth(deltaX < 0 ? 1 : -1);
+}
+
+calendarViewport.addEventListener('pointerdown', (event) => {
+  if (!event.isPrimary) return;
+  beginCalendarGesture(event.clientX, event.clientY, event.target);
+});
+
+calendarViewport.addEventListener('pointermove', (event) => {
+  if (!event.isPrimary) return;
+  moveCalendarGesture(event.clientX, event.clientY);
+});
+
+calendarViewport.addEventListener('pointerup', (event) => {
+  if (!event.isPrimary) return;
+  endCalendarGesture(event.clientX, event.clientY);
 });
 
 calendarViewport.addEventListener('pointercancel', () => {
+  if (longPressTimer) clearTimeout(longPressTimer);
+  longPressTimer = null;
   swipeStart = null;
 });
 
@@ -316,21 +359,27 @@ if (!window.PointerEvent) {
     if (event.touches.length !== 1) return;
     const touch = event.touches[0];
     touchSwipeStart = { x: touch.clientX, y: touch.clientY };
+    beginCalendarGesture(touch.clientX, touch.clientY, event.target);
+  }, { passive: true });
+
+  calendarViewport.addEventListener('touchmove', (event) => {
+    if (event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    moveCalendarGesture(touch.clientX, touch.clientY);
   }, { passive: true });
 
   calendarViewport.addEventListener('touchend', (event) => {
     if (!touchSwipeStart || event.changedTouches.length !== 1) return;
     const touch = event.changedTouches[0];
-    const deltaX = touch.clientX - touchSwipeStart.x;
-    const deltaY = touch.clientY - touchSwipeStart.y;
     touchSwipeStart = null;
-    if (Math.abs(deltaX) < 42 || Math.abs(deltaX) < Math.abs(deltaY) * 1.1) return;
-    ignoreClickUntil = Date.now() + 400;
-    changeMonth(deltaX < 0 ? 1 : -1);
+    endCalendarGesture(touch.clientX, touch.clientY);
   }, { passive: true });
 
   calendarViewport.addEventListener('touchcancel', () => {
     touchSwipeStart = null;
+    if (longPressTimer) clearTimeout(longPressTimer);
+    longPressTimer = null;
+    swipeStart = null;
   }, { passive: true });
 }
 

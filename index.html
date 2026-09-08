@@ -9,9 +9,9 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=3" />
+    <link rel="manifest" href="manifest.webmanifest?v=4" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=3" />
+    <link rel="stylesheet" href="styles.css?v=4" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -40,8 +40,7 @@
         </div>
 
         <div class="calendar-actions">
-          <button class="range-button" id="rangeModeButton" type="button" aria-pressed="false">기간 선택</button>
-          <p id="rangeStatus" aria-live="polite">날짜를 눌러 일정을 확인하세요</p>
+          <p id="rangeStatus" aria-live="polite">날짜를 길게 누르면 기간을 선택할 수 있어요</p>
         </div>
 
         <div class="calendar-viewport" id="calendarViewport">
@@ -117,6 +116,6 @@
         <button type="button" class="delete-button" aria-label="일정 삭제">삭제</button>
       </article>
     </template>
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
   </body>
 </html>

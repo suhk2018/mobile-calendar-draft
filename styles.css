@@ -73,7 +73,7 @@ h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-size: clamp(1.7rem, 4vw, 2.15rem); font-weight: 700; letter-spacing: -0.055em; }
 h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.035em; }
 
-.icon-button, .text-button, .nav-button, .range-button, .close-composer, .delete-button {
+.icon-button, .text-button, .nav-button, .close-composer, .delete-button {
   border: 0;
   color: var(--text);
   background: transparent;
@@ -101,10 +101,8 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .nav-button { width: 44px; height: 44px; border-radius: 15px; color: var(--text-secondary); font-size: 1.9rem; line-height: 1; }
 .nav-button:hover, .nav-button:focus-visible { background: var(--hover); }
 
-.calendar-actions { min-height: 36px; margin-bottom: 9px; padding: 0 4px; gap: 10px; }
+.calendar-actions { min-height: 36px; margin-bottom: 9px; padding: 0 4px; justify-content: flex-end; }
 .calendar-actions p { margin: 0; overflow: hidden; color: var(--text-tertiary); font-size: 0.72rem; text-overflow: ellipsis; white-space: nowrap; }
-.range-button { flex: 0 0 auto; min-height: 32px; padding: 0 11px; border-radius: 10px; background: var(--hover); color: var(--text-secondary); font-size: 0.74rem; font-weight: 700; }
-.range-button[aria-pressed="true"] { background: var(--primary-soft); color: var(--primary-text); }
 
 .calendar-viewport { touch-action: pan-y; }
 .calendar-viewport.is-sliding-left { animation: slide-from-right 220ms cubic-bezier(.2,.7,.3,1); }
@@ -221,7 +219,7 @@ legend { margin-bottom: 8px; }
 
 @media (max-width: 360px) {
   .date-row { display: grid; grid-template-columns: 1fr 1fr; }
-  .calendar-actions p { display: none; }
+  .calendar-actions p { font-size: 0.64rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
