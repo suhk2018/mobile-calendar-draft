@@ -89,7 +89,12 @@
     const credentials = { email: String(values.get('email')).trim(), password: String(values.get('password')) };
     showError(ui.authError, '');
     if (!configured) return showError(ui.authError, '먼저 Supabase 연결 정보를 설정해 주세요.');
-    const result = mode === 'signup' ? await client.auth.signUp(credentials) : await client.auth.signInWithPassword(credentials);
+    const result = mode === 'signup'
+      ? await client.auth.signUp({
+          ...credentials,
+          options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` },
+        })
+      : await client.auth.signInWithPassword(credentials);
     if (result.error) return showError(ui.authError, result.error.message);
     if (mode === 'signup' && !result.data.session) showError(ui.authError, '확인 이메일을 보냈어요. 이메일 인증 후 로그인해 주세요.');
   }
