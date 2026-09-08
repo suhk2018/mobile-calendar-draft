@@ -1,10 +1,10 @@
-const CACHE_NAME = 'calendar-v2';
+const CACHE_NAME = 'calendar-v3';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css',
-  './app.js',
-  './manifest.webmanifest',
+  './styles.css?v=3',
+  './app.js?v=3',
+  './manifest.webmanifest?v=3',
   './icon.svg',
 ];
 
@@ -37,5 +37,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request)),
+  );
 });

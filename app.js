@@ -27,6 +27,7 @@ let rangeMode = false;
 let rangeAnchor = null;
 let ignoreClickUntil = 0;
 let swipeStart = null;
+let touchSwipeStart = null;
 let events = loadEvents();
 
 function startOfDay(date) {
@@ -309,6 +310,30 @@ calendarViewport.addEventListener('pointercancel', () => {
   swipeStart = null;
 });
 
+// 오래된 iOS 홈 화면 웹앱처럼 Pointer Events가 없는 환경도 지원한다.
+if (!window.PointerEvent) {
+  calendarViewport.addEventListener('touchstart', (event) => {
+    if (event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    touchSwipeStart = { x: touch.clientX, y: touch.clientY };
+  }, { passive: true });
+
+  calendarViewport.addEventListener('touchend', (event) => {
+    if (!touchSwipeStart || event.changedTouches.length !== 1) return;
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchSwipeStart.x;
+    const deltaY = touch.clientY - touchSwipeStart.y;
+    touchSwipeStart = null;
+    if (Math.abs(deltaX) < 42 || Math.abs(deltaX) < Math.abs(deltaY) * 1.1) return;
+    ignoreClickUntil = Date.now() + 400;
+    changeMonth(deltaX < 0 ? 1 : -1);
+  }, { passive: true });
+
+  calendarViewport.addEventListener('touchcancel', () => {
+    touchSwipeStart = null;
+  }, { passive: true });
+}
+
 eventStartDate.addEventListener('change', () => {
   eventEndDate.min = eventStartDate.value;
   if (!eventEndDate.value || eventEndDate.value < eventStartDate.value) eventEndDate.value = eventStartDate.value;
@@ -361,7 +386,7 @@ render();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((error) => {
+    navigator.serviceWorker.register('./sw.js').then((registration) => registration.update()).catch((error) => {
       console.warn('오프라인 사용을 위한 서비스 워커를 등록하지 못했습니다.', error);
     });
   });
