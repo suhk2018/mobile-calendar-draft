@@ -16,6 +16,7 @@ const eventTemplate = document.querySelector('#eventTemplate');
 const themeButton = document.querySelector('#themeButton');
 const personalCalendarButton = document.querySelector('#personalCalendarButton');
 const sharedCalendarButton = document.querySelector('#sharedCalendarButton');
+const sharedCalendarTabs = document.querySelector('#sharedCalendarTabs');
 const composerScopeLabel = document.querySelector('#composerScopeLabel');
 
 const storageKey = 'green-calendar-events-v1';
@@ -33,6 +34,9 @@ let calendarScope = 'personal';
 let personalEvents = loadEvents();
 let sharedEvents = [];
 let events = personalEvents;
+let sharedCalendars = [];
+let activeSharedCalendarId = null;
+const holidaysByYear = new Map();
 
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -84,6 +88,32 @@ function saveEvents() {
   localStorage.setItem(storageKey, JSON.stringify(events));
 }
 
+async function loadHolidays(year) {
+  if (holidaysByYear.has(year)) return;
+  const cacheKey = `kr-holidays-${year}-v1`;
+  try {
+    const cached = JSON.parse(localStorage.getItem(cacheKey));
+    if (Array.isArray(cached)) holidaysByYear.set(year, cached);
+  } catch {}
+  if (holidaysByYear.has(year)) return;
+  holidaysByYear.set(year, []);
+  try {
+    const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/KR`);
+    if (!response.ok) throw new Error('공휴일 정보를 불러오지 못했습니다.');
+    const holidays = (await response.json()).map(({ date, localName }) => ({ date, name: localName }));
+    holidaysByYear.set(year, holidays);
+    localStorage.setItem(cacheKey, JSON.stringify(holidays));
+    renderCalendar();
+  } catch (error) {
+    console.warn(error);
+  }
+}
+
+function getHoliday(key) {
+  const year = Number(key.slice(0, 4));
+  return holidaysByYear.get(year)?.find((holiday) => holiday.date === key);
+}
+
 function sameDay(a, b) {
   return toKey(a) === toKey(b);
 }
@@ -118,6 +148,9 @@ function renderCalendar() {
   const selectedStartKey = toKey(selectedStartDate);
   const selectedEndKey = toKey(selectedEndDate);
   monthTitle.textContent = `${year}년 ${month + 1}월`;
+  loadHolidays(year);
+  if (month === 0) loadHolidays(year - 1);
+  if (month === 11) loadHolidays(year + 1);
   calendarGrid.replaceChildren();
 
   const firstVisible = new Date(year, month, 1 - new Date(year, month, 1).getDay());
@@ -125,14 +158,16 @@ function renderCalendar() {
     const date = new Date(firstVisible.getFullYear(), firstVisible.getMonth(), firstVisible.getDate() + index);
     const key = toKey(date);
     const dayEvents = events.filter((event) => eventCoversDate(event, key));
+    const holiday = getHoliday(key);
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'day-cell';
     button.dataset.date = key;
     button.setAttribute('role', 'gridcell');
-    button.setAttribute('aria-label', `${formatLongDate(date)}${dayEvents.length ? `, 일정 ${dayEvents.length}개` : ''}`);
+    button.setAttribute('aria-label', `${formatLongDate(date)}${holiday ? `, ${holiday.name}` : ''}${dayEvents.length ? `, 일정 ${dayEvents.length}개` : ''}`);
     if (date.getMonth() !== month) button.classList.add('is-outside');
     if (sameDay(date, today)) button.classList.add('is-today');
+    if (holiday) button.classList.add('is-holiday');
     if (key >= selectedStartKey && key <= selectedEndKey) button.classList.add('is-in-range');
     if (key === selectedStartKey) button.classList.add('is-range-start');
     if (key === selectedEndKey) button.classList.add('is-range-end');
@@ -147,7 +182,14 @@ function renderCalendar() {
       dot.className = `event-dot ${event.color}`;
       dots.append(dot);
     });
-    button.append(number, dots);
+    button.append(number);
+    if (holiday) {
+      const holidayName = document.createElement('span');
+      holidayName.className = 'holiday-name';
+      holidayName.textContent = holiday.name;
+      button.append(holidayName);
+    }
+    button.append(dots);
     button.addEventListener('click', () => {
       if (Date.now() < ignoreClickUntil) return;
       selectDateAndOpenComposer(date);
@@ -170,7 +212,7 @@ function renderAgenda() {
   if (selectedEvents.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'empty-state';
-    empty.textContent = '아직 일정이 없어요. 아래 + 버튼으로 추가해 보세요.';
+    empty.textContent = '아직 일정이 없어요. 날짜를 누르면 추가할 수 있어요.';
     eventList.append(empty);
     return;
   }
@@ -233,8 +275,30 @@ function setCalendarScope(scope) {
   sharedCalendarButton.classList.toggle('is-active', scope === 'shared');
   personalCalendarButton.setAttribute('aria-pressed', String(scope === 'personal'));
   sharedCalendarButton.setAttribute('aria-pressed', String(scope === 'shared'));
-  composerScopeLabel.textContent = scope === 'shared' ? 'TOGETHER SCHEDULE' : 'MY SCHEDULE';
+  const activeName = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId)?.name;
+  composerScopeLabel.textContent = scope === 'shared' ? (activeName || 'TOGETHER SCHEDULE') : 'MY SCHEDULE';
+  renderSharedCalendarTabs();
   render();
+}
+
+function renderSharedCalendarTabs() {
+  sharedCalendarTabs.replaceChildren();
+  sharedCalendars.forEach((calendar) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'scope-button is-connected';
+    button.textContent = calendar.name;
+    button.setAttribute('aria-pressed', String(calendar.id === activeSharedCalendarId && calendarScope === 'shared'));
+    button.classList.toggle('is-active', calendar.id === activeSharedCalendarId && calendarScope === 'shared');
+    button.addEventListener('click', async () => {
+      activeSharedCalendarId = calendar.id;
+      await window.sharedCalendar.selectCalendar(calendar.id);
+      setCalendarScope('shared');
+      renderSharedCalendarTabs();
+    });
+    sharedCalendarTabs.append(button);
+  });
+  sharedCalendarButton.hidden = sharedCalendars.length > 0;
 }
 
 function animateCalendar(direction) {
@@ -289,7 +353,6 @@ document.querySelector('#todayButton').addEventListener('click', () => {
   cursor = new Date(today.getFullYear(), today.getMonth(), 1);
   render();
 });
-document.querySelector('#openComposer').addEventListener('click', openComposer);
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
 composerBackdrop.addEventListener('click', closeComposer);
 themeButton.addEventListener('click', toggleTheme);
@@ -450,8 +513,12 @@ window.sharedCalendar?.init({
     }
   },
   onConnection(connected) {
-    sharedCalendarButton.classList.toggle('is-connected', connected);
     if (!connected && calendarScope === 'shared') setCalendarScope('personal');
+  },
+  onCalendars(nextCalendars, activeId) {
+    sharedCalendars = nextCalendars;
+    activeSharedCalendarId = activeId;
+    renderSharedCalendarTabs();
   },
 }).catch((error) => {
   console.error('공유 캘린더를 시작하지 못했습니다.', error);

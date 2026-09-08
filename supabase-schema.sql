@@ -13,8 +13,7 @@ create table public.couple_members (
   couple_id uuid not null references public.couples(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
   joined_at timestamptz not null default now(),
-  primary key (couple_id, user_id),
-  unique (user_id)
+  primary key (couple_id, user_id)
 );
 
 create table public.events (
@@ -25,7 +24,7 @@ create table public.events (
   start_date date not null,
   end_date date not null check (end_date >= start_date),
   event_time time,
-  color text not null default 'mint' check (color in ('mint', 'coral', 'violet', 'sun')),
+  color text not null default 'mint' check (color in ('mint', 'coral', 'violet', 'sun', 'blue', 'pink', 'sky', 'lime', 'orange', 'red')),
   created_at timestamptz not null default now()
 );
 
@@ -50,7 +49,6 @@ as $$
 declare new_id uuid;
 begin
   if auth.uid() is null then raise exception '로그인이 필요합니다'; end if;
-  if exists(select 1 from public.couple_members where user_id = auth.uid()) then raise exception '이미 공유 캘린더에 참여 중입니다'; end if;
   insert into public.couples(name, created_by) values (trim(couple_name), auth.uid()) returning id into new_id;
   insert into public.couple_members(couple_id, user_id) values (new_id, auth.uid());
   return new_id;
@@ -63,12 +61,11 @@ as $$
 declare target_id uuid; member_count integer;
 begin
   if auth.uid() is null then raise exception '로그인이 필요합니다'; end if;
-  if exists(select 1 from public.couple_members where user_id = auth.uid()) then raise exception '이미 공유 캘린더에 참여 중입니다'; end if;
   select id into target_id from public.couples where invite_code = upper(trim(invitation_code));
   if target_id is null then raise exception '초대 코드를 찾을 수 없습니다'; end if;
   select count(*) into member_count from public.couple_members where couple_id = target_id;
   if member_count >= 2 then raise exception '이미 두 명이 참여한 캘린더입니다'; end if;
-  insert into public.couple_members(couple_id, user_id) values (target_id, auth.uid());
+  insert into public.couple_members(couple_id, user_id) values (target_id, auth.uid()) on conflict do nothing;
   return target_id;
 end;
 $$;

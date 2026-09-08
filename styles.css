@@ -16,6 +16,12 @@
   --coral: #f26b5e;
   --violet: #8b6ce0;
   --sun: #e89a24;
+  --blue: #2667d8;
+  --pink: #ed5f9a;
+  --sky: #38a8d8;
+  --lime: #74a72d;
+  --orange: #f0782b;
+  --red: #e34850;
   --shadow: 0 8px 28px rgba(0, 27, 55, 0.06);
 }
 
@@ -101,8 +107,10 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .nav-button { width: 44px; height: 44px; border-radius: 15px; color: var(--text-secondary); font-size: 1.9rem; line-height: 1; }
 .nav-button:hover, .nav-button:focus-visible { background: var(--hover); }
 
-.calendar-scope { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 12px; padding: 4px; border-radius: 16px; background: var(--border); }
-.scope-button { min-height: 42px; border: 0; border-radius: 12px; background: transparent; color: var(--text-secondary); font-size: .84rem; font-weight: 700; }
+.calendar-scope { display: flex; gap: 4px; margin-bottom: 12px; padding: 4px; overflow-x: auto; border-radius: 16px; background: var(--border); scrollbar-width: none; }
+.calendar-scope::-webkit-scrollbar { display: none; }
+.shared-calendar-tabs { display: contents; }
+.scope-button { min-width: max-content; min-height: 42px; padding: 0 18px; flex: 1 0 auto; border: 0; border-radius: 12px; background: transparent; color: var(--text-secondary); font-size: .84rem; font-weight: 700; }
 .scope-button.is-active { background: var(--surface); color: var(--primary-text); box-shadow: 0 2px 10px rgba(0, 27, 55, .07); }
 .scope-button:disabled { cursor: pointer; opacity: .65; }
 .scope-button.is-connected::after { display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--primary); content: ''; vertical-align: 1px; }
@@ -150,6 +158,14 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .event-dot.coral, .event-marker.coral { background: var(--coral); }
 .event-dot.violet, .event-marker.violet { background: var(--violet); }
 .event-dot.sun, .event-marker.sun { background: var(--sun); }
+.event-dot.blue, .event-marker.blue { background: var(--blue); }
+.event-dot.pink, .event-marker.pink { background: var(--pink); }
+.event-dot.sky, .event-marker.sky { background: var(--sky); }
+.event-dot.lime, .event-marker.lime { background: var(--lime); }
+.event-dot.orange, .event-marker.orange { background: var(--orange); }
+.event-dot.red, .event-marker.red { background: var(--red); }
+.holiday-name { max-width: 100%; overflow: hidden; color: var(--danger); font-size: .6rem; font-weight: 700; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+.day-cell.is-holiday .day-number { color: var(--danger); }
 
 .agenda-panel { margin-top: 16px; padding: 21px; }
 .agenda-heading { margin-bottom: 13px; }
@@ -190,11 +206,12 @@ input[type="email"], input[type="password"] { width: 100%; min-height: 48px; pad
 .form-row label { flex: 1; min-width: 0; }
 fieldset { margin: 0; padding: 0; border: 0; }
 legend { margin-bottom: 8px; }
-.color-options { display: flex; gap: 14px; }
+.color-options { display: flex; flex-wrap: wrap; gap: 14px; }
 .color-choice { position: relative; display: block; }
 .color-choice input { position: absolute; opacity: 0; }
 .color-swatch { display: block; width: 29px; height: 29px; border: 3px solid var(--surface); border-radius: 50%; }
 .color-swatch.mint { background: var(--primary); }.color-swatch.coral { background: var(--coral); }.color-swatch.violet { background: var(--violet); }.color-swatch.sun { background: var(--sun); }
+.color-swatch.blue { background: var(--blue); }.color-swatch.pink { background: var(--pink); }.color-swatch.sky { background: var(--sky); }.color-swatch.lime { background: var(--lime); }.color-swatch.orange { background: var(--orange); }.color-swatch.red { background: var(--red); }
 .color-choice input:checked + .color-swatch { outline: 2px solid var(--text); outline-offset: 2px; }
 .form-error { margin: -4px 0 0; color: var(--danger); font-size: 0.78rem; }
 .save-button { min-height: 50px; border: 0; border-radius: 14px; background: var(--primary); color: #fff; font-weight: 700; }
@@ -216,10 +233,14 @@ legend { margin-bottom: 8px; }
 .couple-card strong { color: var(--primary-text); font-size: 1.15rem; }
 .couple-card p { margin: 3px 0 0; color: var(--text-secondary); font-size: .78rem; }
 .invite-code { border: 0; background: transparent; color: var(--primary-text); font-weight: 800; letter-spacing: .08em; }
+.couple-list { display: grid; gap: 10px; margin-bottom: 22px; }
+.couple-card { grid-template-columns: 1fr auto; align-items: center; }
+.couple-card strong, .couple-card span { grid-column: 1; }
+.couple-card p { grid-column: 1 / -1; }
+.calendar-open-button { grid-column: 2; grid-row: 1 / 3; min-height: 36px; padding: 0 12px; border: 0; border-radius: 11px; background: var(--surface); color: var(--primary-text); font-size: .76rem; font-weight: 700; }
+.couple-setup-view { padding-top: 20px; border-top: 1px solid var(--border); }
 .or-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; color: var(--text-tertiary); font-size: .72rem; }
 .or-divider::before, .or-divider::after { height: 1px; flex: 1; background: var(--border); content: ''; }
-.add-button { position: fixed; right: max(22px, calc((100vw - 820px) / 2 + 22px), env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom)); z-index: 5; width: 58px; height: 58px; border: 0; border-radius: 20px; background: var(--primary); color: #fff; box-shadow: 0 10px 24px rgba(49, 130, 246, .32); font-size: 2rem; line-height: 1; }
-.add-button:hover, .add-button:focus-visible { background: var(--primary-hover); transform: translateY(-2px); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 
 @media (min-width: 720px) {
@@ -238,7 +259,6 @@ legend { margin-bottom: 8px; }
   .day-cell { min-height: 61px; padding: 5px 1px; }
   .day-number { width: 28px; height: 28px; }
   .agenda-panel { padding: 18px; border-radius: 22px; }
-  .add-button { right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); }
 }
 
 @media (max-width: 360px) {

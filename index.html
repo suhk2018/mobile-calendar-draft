@@ -9,9 +9,9 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=8" />
+    <link rel="manifest" href="manifest.webmanifest?v=9" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=8" />
+    <link rel="stylesheet" href="styles.css?v=9" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -35,7 +35,8 @@
 
       <nav class="calendar-scope" aria-label="캘린더 종류">
         <button class="scope-button is-active" id="personalCalendarButton" type="button" aria-pressed="true">나의 일정</button>
-        <button class="scope-button" id="sharedCalendarButton" type="button" aria-pressed="false">함께하는 일정</button>
+        <div class="shared-calendar-tabs" id="sharedCalendarTabs"></div>
+        <button class="scope-button" id="sharedCalendarButton" type="button" aria-pressed="false">공유 캘린더</button>
       </nav>
 
       <section class="calendar-panel" aria-label="월간 캘린더">
@@ -100,13 +101,18 @@
               <label class="color-choice"><input type="radio" name="color" value="coral" /><span class="color-swatch coral"></span><span class="sr-only">코랄</span></label>
               <label class="color-choice"><input type="radio" name="color" value="violet" /><span class="color-swatch violet"></span><span class="sr-only">보라</span></label>
               <label class="color-choice"><input type="radio" name="color" value="sun" /><span class="color-swatch sun"></span><span class="sr-only">노랑</span></label>
+              <label class="color-choice"><input type="radio" name="color" value="blue" /><span class="color-swatch blue"></span><span class="sr-only">파랑</span></label>
+              <label class="color-choice"><input type="radio" name="color" value="pink" /><span class="color-swatch pink"></span><span class="sr-only">분홍</span></label>
+              <label class="color-choice"><input type="radio" name="color" value="sky" /><span class="color-swatch sky"></span><span class="sr-only">하늘</span></label>
+              <label class="color-choice"><input type="radio" name="color" value="lime" /><span class="color-swatch lime"></span><span class="sr-only">연두</span></label>
+              <label class="color-choice"><input type="radio" name="color" value="orange" /><span class="color-swatch orange"></span><span class="sr-only">주황</span></label>
+              <label class="color-choice"><input type="radio" name="color" value="red" /><span class="color-swatch red"></span><span class="sr-only">빨강</span></label>
             </div>
           </fieldset>
           <button class="save-button" type="submit">일정 저장</button>
         </form>
       </section>
 
-      <button class="add-button" id="openComposer" type="button" aria-label="새 일정 추가">+</button>
     </main>
 
     <div class="account-backdrop" id="accountBackdrop" hidden></div>
@@ -141,13 +147,10 @@
           <button class="delete-button" id="signOutButton" type="button">로그아웃</button>
         </div>
         <div id="coupleConnectedView" hidden>
-          <div class="couple-card">
-            <span>함께 쓰는 캘린더</span>
-            <strong id="coupleName"></strong>
-            <p>초대 코드 <button class="invite-code" id="inviteCode" type="button" title="눌러서 복사"></button></p>
-          </div>
+          <p class="sheet-description">참여 중인 공유 캘린더</p>
+          <div class="couple-list" id="coupleList"></div>
         </div>
-        <div id="coupleSetupView">
+        <div id="coupleSetupView" class="couple-setup-view">
           <form id="createCoupleForm">
             <label>커플 캘린더 이름<input name="name" type="text" maxlength="30" required placeholder="예: 우리의 캘린더" /></label>
             <button class="save-button" type="submit">새 공유 캘린더 만들기</button>
@@ -172,8 +175,8 @@
       </article>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=8"></script>
-    <script src="shared-calendar.js?v=8"></script>
-    <script src="app.js?v=8"></script>
+    <script src="supabase-config.js?v=9"></script>
+    <script src="shared-calendar.js?v=9"></script>
+    <script src="app.js?v=9"></script>
   </body>
 </html>

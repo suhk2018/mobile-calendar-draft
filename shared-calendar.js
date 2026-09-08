@@ -3,58 +3,86 @@
   const configured = Boolean(config.url && config.anonKey && window.supabase);
   const client = configured ? window.supabase.createClient(config.url, config.anonKey) : null;
   let session = null;
-  let couple = null;
+  let calendars = [];
+  let activeCalendar = null;
   let channel = null;
   let eventHandler = () => {};
   let connectionHandler = () => {};
-
+  let calendarsHandler = () => {};
   const byId = (id) => document.getElementById(id);
   const ui = {};
 
-  function showError(element, message) {
-    element.textContent = message;
-    element.hidden = !message;
-  }
-
-  function mapEvent(row) {
-    return {
-      id: row.id,
-      date: row.start_date,
-      startDate: row.start_date,
-      endDate: row.end_date,
-      time: row.event_time?.slice(0, 5) || '',
-      title: row.title,
-      color: row.color,
-      authorId: row.created_by,
-    };
-  }
+  function showError(element, message) { element.textContent = message; element.hidden = !message; }
+  function mapEvent(row) { return { id: row.id, date: row.start_date, startDate: row.start_date, endDate: row.end_date, time: row.event_time?.slice(0, 5) || '', title: row.title, color: row.color, authorId: row.created_by }; }
 
   async function loadEvents() {
-    if (!couple) return;
-    const { data, error } = await client.from('events').select('*').eq('couple_id', couple.id).order('start_date');
+    if (!activeCalendar) return eventHandler([]);
+    const { data, error } = await client.from('events').select('*').eq('couple_id', activeCalendar.id).order('start_date');
     if (error) throw error;
     eventHandler(data.map(mapEvent));
   }
 
   function subscribe() {
     if (channel) client.removeChannel(channel);
-    if (!couple) return;
-    channel = client.channel(`events:${couple.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `couple_id=eq.${couple.id}` }, loadEvents)
-      .subscribe();
+    channel = null;
+    if (!activeCalendar) return;
+    channel = client.channel(`events:${activeCalendar.id}`).on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `couple_id=eq.${activeCalendar.id}` }, loadEvents).subscribe();
   }
 
-  async function loadCouple() {
-    couple = null;
-    if (!session) return renderAccount();
-    const { data, error } = await client.from('couple_members').select('couple_id, couples(id, name, invite_code)').eq('user_id', session.user.id).limit(1).maybeSingle();
-    if (error) throw error;
-    couple = data?.couples || null;
+  async function selectCalendar(id) {
+    activeCalendar = calendars.find((calendar) => calendar.id === id) || calendars[0] || null;
+    if (activeCalendar) localStorage.setItem('active-shared-calendar-v1', activeCalendar.id);
+    calendarsHandler(calendars, activeCalendar?.id || null);
     renderAccount();
-    if (couple) {
-      await loadEvents();
-      subscribe();
-    }
+    await loadEvents();
+    subscribe();
+  }
+
+  async function loadCalendars(preferredId) {
+    calendars = [];
+    activeCalendar = null;
+    if (!session) return renderAccount();
+    const { data, error } = await client.from('couple_members').select('couple_id, joined_at, couples(id, name, invite_code)').eq('user_id', session.user.id).order('joined_at');
+    if (error) throw error;
+    calendars = data.map((item) => item.couples).filter(Boolean);
+    const savedId = preferredId || localStorage.getItem('active-shared-calendar-v1');
+    activeCalendar = calendars.find((calendar) => calendar.id === savedId) || calendars[0] || null;
+    renderAccount();
+    calendarsHandler(calendars, activeCalendar?.id || null);
+    await loadEvents();
+    subscribe();
+  }
+
+  function renderCalendarCards() {
+    ui.coupleList.replaceChildren();
+    calendars.forEach((calendar) => {
+      const card = document.createElement('div');
+      card.className = 'couple-card';
+      const caption = document.createElement('span');
+      caption.textContent = calendar.id === activeCalendar?.id ? '현재 보고 있는 캘린더' : '함께 쓰는 캘린더';
+      const name = document.createElement('strong');
+      name.textContent = calendar.name;
+      const openButton = document.createElement('button');
+      openButton.type = 'button';
+      openButton.className = 'calendar-open-button';
+      openButton.textContent = calendar.id === activeCalendar?.id ? '선택됨' : '열기';
+      openButton.addEventListener('click', async () => { await selectCalendar(calendar.id); closeSheet(); });
+      const invite = document.createElement('p');
+      invite.append('초대 코드 ');
+      const inviteButton = document.createElement('button');
+      inviteButton.type = 'button';
+      inviteButton.className = 'invite-code';
+      inviteButton.textContent = calendar.invite_code;
+      inviteButton.title = '눌러서 복사';
+      inviteButton.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(calendar.invite_code);
+        inviteButton.textContent = '복사됨!';
+        setTimeout(() => { inviteButton.textContent = calendar.invite_code; }, 1200);
+      });
+      invite.append(inviteButton);
+      card.append(caption, name, openButton, invite);
+      ui.coupleList.append(card);
+    });
   }
 
   function renderAccount() {
@@ -64,52 +92,35 @@
     if (!session) {
       ui.accountButton.textContent = '공유 설정';
       connectionHandler(false);
+      calendarsHandler([], null);
       return;
     }
     ui.accountEmail.textContent = session.user.email;
-    ui.coupleConnectedView.hidden = !couple;
-    ui.coupleSetupView.hidden = Boolean(couple);
-    ui.accountButton.textContent = couple ? couple.name : '연결하기';
-    if (couple) {
-      ui.coupleName.textContent = couple.name;
-      ui.inviteCode.textContent = couple.invite_code;
-    }
-    connectionHandler(Boolean(couple));
+    ui.coupleConnectedView.hidden = calendars.length === 0;
+    ui.accountButton.textContent = activeCalendar?.name || '연결하기';
+    renderCalendarCards();
+    connectionHandler(calendars.length > 0);
   }
 
-  function openSheet() {
-    ui.accountBackdrop.hidden = false;
-    ui.accountSheet.classList.add('is-open');
-  }
-
-  function closeSheet() {
-    ui.accountSheet.classList.remove('is-open');
-    setTimeout(() => { if (!ui.accountSheet.classList.contains('is-open')) ui.accountBackdrop.hidden = true; }, 190);
-  }
+  function openSheet() { ui.accountBackdrop.hidden = false; ui.accountSheet.classList.add('is-open'); }
+  function closeSheet() { ui.accountSheet.classList.remove('is-open'); setTimeout(() => { if (!ui.accountSheet.classList.contains('is-open')) ui.accountBackdrop.hidden = true; }, 190); }
 
   async function runAuth(mode, form) {
     const values = new FormData(form);
     const credentials = { email: String(values.get('email')).trim(), password: String(values.get('password')) };
     showError(ui.authError, '');
     if (!configured) return showError(ui.authError, '먼저 Supabase 연결 정보를 설정해 주세요.');
-    const result = mode === 'signup'
-      ? await client.auth.signUp({
-          ...credentials,
-          options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` },
-        })
-      : await client.auth.signInWithPassword(credentials);
+    const result = mode === 'signup' ? await client.auth.signUp({ ...credentials, options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` } }) : await client.auth.signInWithPassword(credentials);
     if (result.error) return showError(ui.authError, result.error.message);
-    if (mode === 'signup' && result.data.user?.identities?.length === 0) {
-      showError(ui.authError, '이미 가입 요청된 이메일이에요. 위 로그인 버튼을 눌러 주세요.');
-    } else if (mode === 'signup' && !result.data.session) {
-      showError(ui.authError, '확인 이메일을 보냈어요. 이메일 인증 후 로그인해 주세요.');
-    }
+    if (mode === 'signup' && result.data.user?.identities?.length === 0) showError(ui.authError, '이미 가입 요청된 이메일이에요. 위 로그인 버튼을 눌러 주세요.');
+    else if (mode === 'signup' && !result.data.session) showError(ui.authError, '확인 이메일을 보냈어요. 이메일 인증 후 로그인해 주세요.');
   }
 
-  async function init({ onEvents, onConnection }) {
+  async function init({ onEvents, onConnection, onCalendars }) {
     eventHandler = onEvents;
     connectionHandler = onConnection || (() => {});
-    ['accountButton', 'accountBackdrop', 'accountSheet', 'closeAccount', 'connectionNotice', 'signedOutView', 'signedInView', 'authForm', 'authError', 'signUpButton', 'accountEmail', 'signOutButton', 'coupleConnectedView', 'coupleSetupView', 'coupleName', 'inviteCode', 'createCoupleForm', 'joinCoupleForm', 'coupleError'].forEach((id) => { ui[id] = byId(id); });
+    calendarsHandler = onCalendars || (() => {});
+    ['accountButton', 'accountBackdrop', 'accountSheet', 'closeAccount', 'connectionNotice', 'signedOutView', 'signedInView', 'authForm', 'authError', 'signUpButton', 'accountEmail', 'signOutButton', 'coupleConnectedView', 'coupleSetupView', 'coupleList', 'createCoupleForm', 'joinCoupleForm', 'coupleError'].forEach((id) => { ui[id] = byId(id); });
     ui.accountButton.addEventListener('click', openSheet);
     ui.closeAccount.addEventListener('click', closeSheet);
     ui.accountBackdrop.addEventListener('click', closeSheet);
@@ -119,47 +130,41 @@
     ui.createCoupleForm.addEventListener('submit', async (event) => {
       event.preventDefault(); showError(ui.coupleError, '');
       const name = String(new FormData(event.currentTarget).get('name')).trim();
-      const { error } = await client.rpc('create_couple', { couple_name: name });
+      const { data, error } = await client.rpc('create_couple', { couple_name: name });
       if (error) return showError(ui.coupleError, error.message);
-      await loadCouple();
+      event.currentTarget.reset();
+      await loadCalendars(data);
     });
     ui.joinCoupleForm.addEventListener('submit', async (event) => {
       event.preventDefault(); showError(ui.coupleError, '');
       const code = String(new FormData(event.currentTarget).get('code')).trim().toUpperCase();
-      const { error } = await client.rpc('join_couple', { invitation_code: code });
+      const { data, error } = await client.rpc('join_couple', { invitation_code: code });
       if (error) return showError(ui.coupleError, error.message);
-      await loadCouple();
-    });
-    ui.inviteCode.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(couple.invite_code);
-      ui.inviteCode.textContent = '복사됨!';
-      setTimeout(() => { if (couple) ui.inviteCode.textContent = couple.invite_code; }, 1200);
+      event.currentTarget.reset();
+      await loadCalendars(data);
     });
     renderAccount();
     if (!configured) return;
     ({ data: { session } } = await client.auth.getSession());
-    await loadCouple();
-    client.auth.onAuthStateChange(async (_event, nextSession) => {
-      session = nextSession;
-      await loadCouple();
-    });
+    await loadCalendars();
+    client.auth.onAuthStateChange(async (_event, nextSession) => { session = nextSession; await loadCalendars(); });
   }
 
   async function upsertEvent(event) {
-    if (!client || !session || !couple) return false;
-    const { error } = await client.from('events').upsert({ id: event.id, couple_id: couple.id, created_by: session.user.id, title: event.title, start_date: event.startDate, end_date: event.endDate, event_time: event.time || null, color: event.color });
+    if (!client || !session || !activeCalendar) return false;
+    const { error } = await client.from('events').upsert({ id: event.id, couple_id: activeCalendar.id, created_by: session.user.id, title: event.title, start_date: event.startDate, end_date: event.endDate, event_time: event.time || null, color: event.color });
     if (error) throw error;
     await loadEvents();
     return true;
   }
 
   async function deleteEvent(id) {
-    if (!client || !session || !couple) return false;
-    const { error } = await client.from('events').delete().eq('id', id);
+    if (!client || !session || !activeCalendar) return false;
+    const { error } = await client.from('events').delete().eq('id', id).eq('couple_id', activeCalendar.id);
     if (error) throw error;
     await loadEvents();
     return true;
   }
 
-  window.sharedCalendar = { init, upsertEvent, deleteEvent, isConnected: () => Boolean(session && couple), openSettings: openSheet };
+  window.sharedCalendar = { init, upsertEvent, deleteEvent, selectCalendar, isConnected: () => Boolean(session && activeCalendar), openSettings: openSheet };
 })();

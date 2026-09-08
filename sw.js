@@ -1,12 +1,12 @@
-const CACHE_NAME = 'calendar-v8';
+const CACHE_NAME = 'calendar-v9';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=8',
-  './app.js?v=8',
-  './shared-calendar.js?v=8',
-  './supabase-config.js?v=8',
-  './manifest.webmanifest?v=8',
+  './styles.css?v=9',
+  './app.js?v=9',
+  './shared-calendar.js?v=9',
+  './supabase-config.js?v=9',
+  './manifest.webmanifest?v=9',
   './icon.svg',
 ];
 
