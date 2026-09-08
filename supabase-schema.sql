@@ -41,7 +41,7 @@ create policy "members view couple" on public.couples for select using (public.i
 create policy "members view memberships" on public.couple_members for select using (public.is_couple_member(couple_id));
 create policy "members view events" on public.events for select using (public.is_couple_member(couple_id));
 create policy "members add events" on public.events for insert with check (public.is_couple_member(couple_id) and created_by = auth.uid());
-create policy "members update events" on public.events for update using (public.is_couple_member(couple_id));
+create policy "members update events" on public.events for update using (public.is_couple_member(couple_id)) with check (public.is_couple_member(couple_id));
 create policy "members delete events" on public.events for delete using (public.is_couple_member(couple_id));
 
 create function public.create_couple(couple_name text)
