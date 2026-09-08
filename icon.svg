@@ -1,12 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
   <title id="title">캘린더</title>
-  <rect width="512" height="512" rx="116" fill="#3182f6"/>
-  <rect x="92" y="122" width="328" height="298" rx="54" fill="#fbfcfb"/>
-  <path d="M92 194h328" stroke="#d9eee7" stroke-width="28"/>
-  <path d="M168 90v76M344 90v76" stroke="#fbfcfb" stroke-width="30" stroke-linecap="round"/>
-  <circle cx="178" cy="278" r="23" fill="#3182f6"/>
-  <circle cx="256" cy="278" r="23" fill="#3182f6"/>
-  <circle cx="334" cy="278" r="23" fill="#3182f6"/>
-  <circle cx="178" cy="350" r="23" fill="#3182f6"/>
-  <circle cx="256" cy="350" r="23" fill="#de776b"/>
+  <defs>
+    <linearGradient id="background" x1="72" y1="38" x2="444" y2="482" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#64adff"/>
+      <stop offset=".48" stop-color="#3182f6"/>
+      <stop offset="1" stop-color="#1464d7"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="256" y1="116" x2="256" y2="421" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/>
+      <stop offset="1" stop-color="#f4f7fb"/>
+    </linearGradient>
+    <filter id="shadow" x="48" y="76" width="416" height="388" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="16" stdDeviation="17" flood-color="#073f94" flood-opacity=".28"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#background)"/>
+  <path d="M64 0h384c35.3 0 64 28.7 64 64v40C390 49 218 43 63 122L0 154V64C0 28.7 28.7 0 64 0Z" fill="#fff" opacity=".1"/>
+  <g filter="url(#shadow)">
+    <rect x="82" y="105" width="348" height="316" rx="58" fill="url(#paper)"/>
+    <path d="M82 163c0-32 26-58 58-58h232c32 0 58 26 58 58v53H82v-53Z" fill="#ff5b66"/>
+    <circle cx="161" cy="160" r="14" fill="#fff" opacity=".96"/>
+    <circle cx="351" cy="160" r="14" fill="#fff" opacity=".96"/>
+    <rect x="150" y="78" width="22" height="94" rx="11" fill="#fff"/>
+    <rect x="340" y="78" width="22" height="94" rx="11" fill="#fff"/>
+    <text x="256" y="361" fill="#1b64da" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="132" font-weight="700" text-anchor="middle">9</text>
+  </g>
 </svg>

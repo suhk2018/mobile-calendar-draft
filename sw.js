@@ -1,13 +1,15 @@
-const CACHE_NAME = 'calendar-v9';
+const CACHE_NAME = 'calendar-v10';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=9',
-  './app.js?v=9',
-  './shared-calendar.js?v=9',
-  './supabase-config.js?v=9',
-  './manifest.webmanifest?v=9',
-  './icon.svg',
+  './styles.css?v=10',
+  './app.js?v=10',
+  './shared-calendar.js?v=10',
+  './supabase-config.js?v=10',
+  './manifest.webmanifest?v=10',
+  './icon.svg?v=10',
+  './icon-180.png?v=10',
+  './icon-512.png?v=10',
 ];
 
 self.addEventListener('install', (event) => {

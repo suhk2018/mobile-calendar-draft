@@ -9,9 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=9" />
-    <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=9" />
+    <link rel="manifest" href="manifest.webmanifest?v=10" />
+    <link rel="icon" href="icon.svg?v=10" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon-180.png?v=10" />
+    <link rel="stylesheet" href="styles.css?v=10" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -22,22 +23,17 @@
   <body>
     <main class="app-shell">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">MY CALENDAR</p>
-          <h1>캘린더</h1>
+        <div class="brand-group">
+          <button class="menu-button" id="menuButton" type="button" aria-label="캘린더 메뉴 열기">☰</button>
+          <div>
+            <p class="eyebrow" id="currentCalendarLabel">나의 일정</p>
+            <h1>캘린더</h1>
+          </div>
         </div>
         <div class="top-actions">
-          <button class="text-button account-button" id="accountButton" type="button">공유 설정</button>
           <button class="text-button" id="todayButton" type="button">오늘</button>
-          <button class="icon-button" id="themeButton" type="button" aria-label="다크 모드로 전환">☾</button>
         </div>
       </header>
-
-      <nav class="calendar-scope" aria-label="캘린더 종류">
-        <button class="scope-button is-active" id="personalCalendarButton" type="button" aria-pressed="true">나의 일정</button>
-        <div class="shared-calendar-tabs" id="sharedCalendarTabs"></div>
-        <button class="scope-button" id="sharedCalendarButton" type="button" aria-pressed="false">공유 캘린더</button>
-      </nav>
 
       <section class="calendar-panel" aria-label="월간 캘린더">
         <div class="month-controls">
@@ -115,6 +111,23 @@
 
     </main>
 
+    <div class="menu-backdrop" id="menuBackdrop" hidden></div>
+    <aside class="side-menu" id="sideMenu" aria-labelledby="menuTitle" aria-modal="true" role="dialog">
+      <div class="menu-heading">
+        <div><p class="eyebrow">MY CALENDAR</p><h2 id="menuTitle">캘린더 목록</h2></div>
+        <button class="close-composer" id="closeMenu" type="button" aria-label="캘린더 메뉴 닫기">×</button>
+      </div>
+      <nav class="calendar-menu-list" aria-label="캘린더 종류">
+        <button class="menu-calendar-button is-active" id="personalCalendarButton" type="button" aria-pressed="true"><span class="menu-calendar-icon personal">✓</span><span>나의 일정<small>이 기기에만 저장돼요</small></span></button>
+        <div class="shared-calendar-tabs" id="sharedCalendarTabs"></div>
+        <button class="menu-calendar-button add-calendar-menu" id="sharedCalendarButton" type="button" aria-pressed="false"><span class="menu-calendar-icon">＋</span><span>공유 캘린더 추가</span></button>
+      </nav>
+      <div class="menu-settings">
+        <button class="menu-setting-button" id="accountButton" type="button"><span>공유 캘린더 관리</span><span>›</span></button>
+        <button class="menu-setting-button" id="themeButton" type="button" aria-label="다크 모드로 전환"><span>다크 모드</span><span class="theme-switch" aria-hidden="true"><i></i></span></button>
+      </div>
+    </aside>
+
     <div class="account-backdrop" id="accountBackdrop" hidden></div>
     <section class="account-sheet" id="accountSheet" aria-labelledby="accountTitle" aria-modal="true" role="dialog">
       <div class="composer-heading">
@@ -175,8 +188,8 @@
       </article>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=9"></script>
-    <script src="shared-calendar.js?v=9"></script>
-    <script src="app.js?v=9"></script>
+    <script src="supabase-config.js?v=10"></script>
+    <script src="shared-calendar.js?v=10"></script>
+    <script src="app.js?v=10"></script>
   </body>
 </html>

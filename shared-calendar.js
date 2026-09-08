@@ -90,14 +90,12 @@
     ui.signedOutView.hidden = Boolean(session);
     ui.signedInView.hidden = !session;
     if (!session) {
-      ui.accountButton.textContent = '공유 설정';
       connectionHandler(false);
       calendarsHandler([], null);
       return;
     }
     ui.accountEmail.textContent = session.user.email;
     ui.coupleConnectedView.hidden = calendars.length === 0;
-    ui.accountButton.textContent = activeCalendar?.name || '연결하기';
     renderCalendarCards();
     connectionHandler(calendars.length > 0);
   }

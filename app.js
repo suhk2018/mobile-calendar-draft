@@ -18,6 +18,12 @@ const personalCalendarButton = document.querySelector('#personalCalendarButton')
 const sharedCalendarButton = document.querySelector('#sharedCalendarButton');
 const sharedCalendarTabs = document.querySelector('#sharedCalendarTabs');
 const composerScopeLabel = document.querySelector('#composerScopeLabel');
+const currentCalendarLabel = document.querySelector('#currentCalendarLabel');
+const menuButton = document.querySelector('#menuButton');
+const sideMenu = document.querySelector('#sideMenu');
+const menuBackdrop = document.querySelector('#menuBackdrop');
+const closeMenuButton = document.querySelector('#closeMenu');
+const accountButton = document.querySelector('#accountButton');
 
 const storageKey = 'green-calendar-events-v1';
 const themeStorageKey = 'calendar-theme-v1';
@@ -30,6 +36,7 @@ let swipeStart = null;
 let touchSwipeStart = null;
 let dragAnchor = null;
 let rangeDragging = false;
+let longPressTimer = null;
 let calendarScope = 'personal';
 let personalEvents = loadEvents();
 let sharedEvents = [];
@@ -175,12 +182,13 @@ function renderCalendar() {
     const number = document.createElement('span');
     number.className = 'day-number';
     number.textContent = date.getDate();
-    const dots = document.createElement('span');
-    dots.className = 'event-dots';
-    dayEvents.slice(0, 3).forEach((event) => {
-      const dot = document.createElement('i');
-      dot.className = `event-dot ${event.color}`;
-      dots.append(dot);
+    const eventLabels = document.createElement('span');
+    eventLabels.className = 'day-event-labels';
+    dayEvents.slice(0, 2).forEach((event) => {
+      const label = document.createElement('span');
+      label.className = `day-event-label ${event.color}`;
+      label.textContent = event.title;
+      eventLabels.append(label);
     });
     button.append(number);
     if (holiday) {
@@ -189,7 +197,7 @@ function renderCalendar() {
       holidayName.textContent = holiday.name;
       button.append(holidayName);
     }
-    button.append(dots);
+    button.append(eventLabels);
     button.addEventListener('click', () => {
       if (Date.now() < ignoreClickUntil) return;
       selectDateAndOpenComposer(date);
@@ -272,11 +280,11 @@ function setCalendarScope(scope) {
   calendarScope = scope;
   events = scope === 'shared' ? sharedEvents : personalEvents;
   personalCalendarButton.classList.toggle('is-active', scope === 'personal');
-  sharedCalendarButton.classList.toggle('is-active', scope === 'shared');
   personalCalendarButton.setAttribute('aria-pressed', String(scope === 'personal'));
-  sharedCalendarButton.setAttribute('aria-pressed', String(scope === 'shared'));
+  sharedCalendarButton.setAttribute('aria-pressed', 'false');
   const activeName = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId)?.name;
   composerScopeLabel.textContent = scope === 'shared' ? (activeName || 'TOGETHER SCHEDULE') : 'MY SCHEDULE';
+  currentCalendarLabel.textContent = scope === 'shared' ? (activeName || '공유 캘린더') : '나의 일정';
   renderSharedCalendarTabs();
   render();
 }
@@ -286,19 +294,39 @@ function renderSharedCalendarTabs() {
   sharedCalendars.forEach((calendar) => {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'scope-button is-connected';
-    button.textContent = calendar.name;
+    button.className = 'menu-calendar-button';
+    const icon = document.createElement('span');
+    icon.className = 'menu-calendar-icon';
+    icon.textContent = '♥';
+    const copy = document.createElement('span');
+    copy.textContent = calendar.name;
+    const detail = document.createElement('small');
+    detail.textContent = '함께 쓰는 일정';
+    copy.append(detail);
+    button.append(icon, copy);
     button.setAttribute('aria-pressed', String(calendar.id === activeSharedCalendarId && calendarScope === 'shared'));
     button.classList.toggle('is-active', calendar.id === activeSharedCalendarId && calendarScope === 'shared');
     button.addEventListener('click', async () => {
       activeSharedCalendarId = calendar.id;
       await window.sharedCalendar.selectCalendar(calendar.id);
       setCalendarScope('shared');
-      renderSharedCalendarTabs();
+      closeSideMenu();
     });
     sharedCalendarTabs.append(button);
   });
-  sharedCalendarButton.hidden = sharedCalendars.length > 0;
+  sharedCalendarButton.querySelector('span:last-child').textContent = sharedCalendars.length ? '공유 캘린더 추가' : '공유 캘린더 연결';
+}
+
+function openSideMenu() {
+  menuBackdrop.hidden = false;
+  sideMenu.classList.add('is-open');
+  menuButton.setAttribute('aria-expanded', 'true');
+}
+
+function closeSideMenu() {
+  sideMenu.classList.remove('is-open');
+  menuButton.setAttribute('aria-expanded', 'false');
+  setTimeout(() => { if (!sideMenu.classList.contains('is-open')) menuBackdrop.hidden = true; }, 220);
 }
 
 function animateCalendar(direction) {
@@ -334,7 +362,6 @@ function closeComposer() {
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   const isDark = theme === 'dark';
-  themeButton.textContent = isDark ? '☀' : '☾';
   themeButton.setAttribute('aria-label', isDark ? '라이트 모드로 전환' : '다크 모드로 전환');
   document.querySelector('meta[name="theme-color"]').setAttribute('content', isDark ? '#101214' : '#3182f6');
 }
@@ -356,26 +383,50 @@ document.querySelector('#todayButton').addEventListener('click', () => {
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
 composerBackdrop.addEventListener('click', closeComposer);
 themeButton.addEventListener('click', toggleTheme);
-personalCalendarButton.addEventListener('click', () => setCalendarScope('personal'));
-sharedCalendarButton.addEventListener('click', () => setCalendarScope('shared'));
+menuButton.addEventListener('click', openSideMenu);
+closeMenuButton.addEventListener('click', closeSideMenu);
+menuBackdrop.addEventListener('click', closeSideMenu);
+accountButton.addEventListener('click', closeSideMenu);
+personalCalendarButton.addEventListener('click', () => { setCalendarScope('personal'); closeSideMenu(); });
+sharedCalendarButton.addEventListener('click', () => { closeSideMenu(); window.sharedCalendar?.openSettings(); });
 
 function beginCalendarGesture(x, y, target) {
+  clearTimeout(longPressTimer);
   swipeStart = { x, y };
   const dayCell = target.closest('.day-cell');
   dragAnchor = dayCell ? fromKey(dayCell.dataset.date) : null;
   rangeDragging = false;
+  if (dragAnchor) {
+    longPressTimer = setTimeout(() => {
+      rangeDragging = true;
+      selectedStartDate = new Date(dragAnchor);
+      selectedEndDate = new Date(dragAnchor);
+      render();
+      navigator.vibrate?.(18);
+    }, 480);
+  }
 }
 
 function moveCalendarGesture(x, y) {
-  if (!swipeStart || !dragAnchor || Math.hypot(x - swipeStart.x, y - swipeStart.y) < 10) return;
+  if (!swipeStart) return false;
+  if (!rangeDragging) {
+    if (Math.hypot(x - swipeStart.x, y - swipeStart.y) > 16) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    return false;
+  }
+  if (!dragAnchor) return false;
   const dayCell = document.elementFromPoint(x, y)?.closest('.day-cell');
-  if (!dayCell) return;
-  rangeDragging = true;
+  if (!dayCell) return true;
   updateDraggedRange(fromKey(dayCell.dataset.date));
+  return true;
 }
 
 function endCalendarGesture(x, y) {
   if (!swipeStart) return;
+  clearTimeout(longPressTimer);
+  longPressTimer = null;
   const deltaX = x - swipeStart.x;
   const deltaY = y - swipeStart.y;
   swipeStart = null;
@@ -399,7 +450,7 @@ calendarViewport.addEventListener('pointerdown', (event) => {
 
 calendarViewport.addEventListener('pointermove', (event) => {
   if (!event.isPrimary) return;
-  moveCalendarGesture(event.clientX, event.clientY);
+  if (moveCalendarGesture(event.clientX, event.clientY)) event.preventDefault();
 });
 
 calendarViewport.addEventListener('pointerup', (event) => {
@@ -411,6 +462,8 @@ calendarViewport.addEventListener('pointercancel', () => {
   swipeStart = null;
   dragAnchor = null;
   rangeDragging = false;
+  clearTimeout(longPressTimer);
+  longPressTimer = null;
 });
 
 // 오래된 iOS 홈 화면 웹앱처럼 Pointer Events가 없는 환경도 지원한다.
@@ -425,8 +478,8 @@ if (!window.PointerEvent) {
   calendarViewport.addEventListener('touchmove', (event) => {
     if (event.touches.length !== 1) return;
     const touch = event.touches[0];
-    moveCalendarGesture(touch.clientX, touch.clientY);
-  }, { passive: true });
+    if (moveCalendarGesture(touch.clientX, touch.clientY)) event.preventDefault();
+  }, { passive: false });
 
   calendarViewport.addEventListener('touchend', (event) => {
     if (!touchSwipeStart || event.changedTouches.length !== 1) return;
@@ -440,6 +493,8 @@ if (!window.PointerEvent) {
     swipeStart = null;
     dragAnchor = null;
     rangeDragging = false;
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
   }, { passive: true });
 }
 
