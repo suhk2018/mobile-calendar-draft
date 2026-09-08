@@ -9,9 +9,9 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=7" />
+    <link rel="manifest" href="manifest.webmanifest?v=8" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=7" />
+    <link rel="stylesheet" href="styles.css?v=8" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -33,15 +33,16 @@
         </div>
       </header>
 
+      <nav class="calendar-scope" aria-label="캘린더 종류">
+        <button class="scope-button is-active" id="personalCalendarButton" type="button" aria-pressed="true">나의 일정</button>
+        <button class="scope-button" id="sharedCalendarButton" type="button" aria-pressed="false">함께하는 일정</button>
+      </nav>
+
       <section class="calendar-panel" aria-label="월간 캘린더">
         <div class="month-controls">
           <button class="nav-button" id="previousMonth" type="button" aria-label="이전 달">‹</button>
           <h2 id="monthTitle" aria-live="polite"></h2>
           <button class="nav-button" id="nextMonth" type="button" aria-label="다음 달">›</button>
-        </div>
-
-        <div class="calendar-actions">
-          <p id="rangeStatus" aria-live="polite">날짜를 길게 누르면 기간을 선택할 수 있어요</p>
         </div>
 
         <div class="calendar-viewport" id="calendarViewport">
@@ -67,7 +68,7 @@
       <section class="composer" aria-labelledby="composerTitle" aria-modal="true" role="dialog">
         <div class="composer-heading">
           <div>
-            <p class="eyebrow">NEW SCHEDULE</p>
+            <p class="eyebrow" id="composerScopeLabel">MY SCHEDULE</p>
             <h2 id="composerTitle">일정 추가</h2>
           </div>
           <button class="close-composer" id="closeComposer" type="button" aria-label="일정 추가 닫기">×</button>
@@ -171,8 +172,8 @@
       </article>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=7"></script>
-    <script src="shared-calendar.js?v=7"></script>
-    <script src="app.js?v=7"></script>
+    <script src="supabase-config.js?v=8"></script>
+    <script src="shared-calendar.js?v=8"></script>
+    <script src="app.js?v=8"></script>
   </body>
 </html>

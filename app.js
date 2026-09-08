@@ -13,8 +13,10 @@ const formError = document.querySelector('#formError');
 const composer = document.querySelector('.composer');
 const composerBackdrop = document.querySelector('#composerBackdrop');
 const eventTemplate = document.querySelector('#eventTemplate');
-const rangeStatus = document.querySelector('#rangeStatus');
 const themeButton = document.querySelector('#themeButton');
+const personalCalendarButton = document.querySelector('#personalCalendarButton');
+const sharedCalendarButton = document.querySelector('#sharedCalendarButton');
+const composerScopeLabel = document.querySelector('#composerScopeLabel');
 
 const storageKey = 'green-calendar-events-v1';
 const themeStorageKey = 'calendar-theme-v1';
@@ -22,14 +24,15 @@ const today = startOfDay(new Date());
 let cursor = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedStartDate = new Date(today);
 let selectedEndDate = new Date(today);
-let rangeMode = false;
-let rangeAnchor = null;
 let ignoreClickUntil = 0;
 let swipeStart = null;
 let touchSwipeStart = null;
-let longPressTimer = null;
-let longPressActivated = false;
-let events = loadEvents();
+let dragAnchor = null;
+let rangeDragging = false;
+let calendarScope = 'personal';
+let personalEvents = loadEvents();
+let sharedEvents = [];
+let events = personalEvents;
 
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -147,7 +150,7 @@ function renderCalendar() {
     button.append(number, dots);
     button.addEventListener('click', () => {
       if (Date.now() < ignoreClickUntil) return;
-      handleDateSelection(date);
+      selectDateAndOpenComposer(date);
     });
     calendarGrid.append(button);
   }
@@ -181,15 +184,16 @@ function renderAgenda() {
     const deleteButton = item.querySelector('.delete-button');
     deleteButton.addEventListener('click', async () => {
       try {
-        if (window.sharedCalendar?.isConnected()) {
+        if (calendarScope === 'shared') {
           await window.sharedCalendar.deleteEvent(event.id);
         } else {
           events = events.filter((savedEvent) => savedEvent.id !== event.id);
+          personalEvents = events;
           saveEvents();
           render();
         }
       } catch (error) {
-        rangeStatus.textContent = '일정을 삭제하지 못했어요. 연결을 확인해 주세요.';
+        eventCount.textContent = '오류';
         console.error(error);
       }
     });
@@ -202,45 +206,34 @@ function render() {
   renderAgenda();
 }
 
-function handleDateSelection(date) {
+function selectDateAndOpenComposer(date) {
   const chosenDate = startOfDay(date);
-  if (!rangeMode) {
-    selectedStartDate = chosenDate;
-    selectedEndDate = chosenDate;
-    cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
-    rangeStatus.textContent = '날짜를 길게 누르면 기간을 선택할 수 있어요';
-    render();
-    return;
-  }
-
-  if (!rangeAnchor) {
-    rangeAnchor = chosenDate;
-    selectedStartDate = chosenDate;
-    selectedEndDate = chosenDate;
-    cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
-    rangeStatus.textContent = '마지막 날짜를 선택하세요';
-    render();
-    return;
-  }
-
-  selectedStartDate = chosenDate < rangeAnchor ? chosenDate : rangeAnchor;
-  selectedEndDate = chosenDate < rangeAnchor ? rangeAnchor : chosenDate;
-  rangeAnchor = null;
-  rangeMode = false;
-  rangeStatus.textContent = `${daysInSelection()}일이 선택됐어요`;
-  cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
-  render();
-}
-
-function startRangeSelection(date) {
-  const chosenDate = startOfDay(date);
-  rangeMode = true;
-  rangeAnchor = chosenDate;
   selectedStartDate = chosenDate;
   selectedEndDate = chosenDate;
   cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
-  rangeStatus.textContent = '마지막 날짜를 선택하세요';
-  ignoreClickUntil = Date.now() + 500;
+  render();
+  openComposer();
+}
+
+function updateDraggedRange(date) {
+  const chosenDate = startOfDay(date);
+  selectedStartDate = chosenDate < dragAnchor ? chosenDate : dragAnchor;
+  selectedEndDate = chosenDate < dragAnchor ? dragAnchor : chosenDate;
+  render();
+}
+
+function setCalendarScope(scope) {
+  if (scope === 'shared' && !window.sharedCalendar?.isConnected()) {
+    window.sharedCalendar?.openSettings();
+    return;
+  }
+  calendarScope = scope;
+  events = scope === 'shared' ? sharedEvents : personalEvents;
+  personalCalendarButton.classList.toggle('is-active', scope === 'personal');
+  sharedCalendarButton.classList.toggle('is-active', scope === 'shared');
+  personalCalendarButton.setAttribute('aria-pressed', String(scope === 'personal'));
+  sharedCalendarButton.setAttribute('aria-pressed', String(scope === 'shared'));
+  composerScopeLabel.textContent = scope === 'shared' ? 'TOGETHER SCHEDULE' : 'MY SCHEDULE';
   render();
 }
 
@@ -294,48 +287,43 @@ document.querySelector('#todayButton').addEventListener('click', () => {
   selectedStartDate = new Date(today);
   selectedEndDate = new Date(today);
   cursor = new Date(today.getFullYear(), today.getMonth(), 1);
-  rangeMode = false;
-  rangeAnchor = null;
-  rangeStatus.textContent = '오늘로 이동했어요';
   render();
 });
 document.querySelector('#openComposer').addEventListener('click', openComposer);
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
 composerBackdrop.addEventListener('click', closeComposer);
 themeButton.addEventListener('click', toggleTheme);
+personalCalendarButton.addEventListener('click', () => setCalendarScope('personal'));
+sharedCalendarButton.addEventListener('click', () => setCalendarScope('shared'));
 
 function beginCalendarGesture(x, y, target) {
   swipeStart = { x, y };
-  longPressActivated = false;
   const dayCell = target.closest('.day-cell');
-  if (!dayCell) return;
-  longPressTimer = setTimeout(() => {
-    longPressTimer = null;
-    longPressActivated = true;
-    startRangeSelection(fromKey(dayCell.dataset.date));
-    navigator.vibrate?.(30);
-  }, 520);
+  dragAnchor = dayCell ? fromKey(dayCell.dataset.date) : null;
+  rangeDragging = false;
 }
 
 function moveCalendarGesture(x, y) {
-  if (!swipeStart || !longPressTimer) return;
-  if (Math.hypot(x - swipeStart.x, y - swipeStart.y) > 10) {
-    clearTimeout(longPressTimer);
-    longPressTimer = null;
-  }
+  if (!swipeStart || !dragAnchor || Math.hypot(x - swipeStart.x, y - swipeStart.y) < 10) return;
+  const dayCell = document.elementFromPoint(x, y)?.closest('.day-cell');
+  if (!dayCell) return;
+  rangeDragging = true;
+  updateDraggedRange(fromKey(dayCell.dataset.date));
 }
 
 function endCalendarGesture(x, y) {
-  if (longPressTimer) clearTimeout(longPressTimer);
-  longPressTimer = null;
   if (!swipeStart) return;
   const deltaX = x - swipeStart.x;
   const deltaY = y - swipeStart.y;
   swipeStart = null;
-  if (longPressActivated) {
-    longPressActivated = false;
+  if (rangeDragging) {
+    rangeDragging = false;
+    dragAnchor = null;
+    ignoreClickUntil = Date.now() + 400;
+    openComposer();
     return;
   }
+  dragAnchor = null;
   if (Math.abs(deltaX) < 52 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) return;
   ignoreClickUntil = Date.now() + 350;
   changeMonth(deltaX < 0 ? 1 : -1);
@@ -357,9 +345,9 @@ calendarViewport.addEventListener('pointerup', (event) => {
 });
 
 calendarViewport.addEventListener('pointercancel', () => {
-  if (longPressTimer) clearTimeout(longPressTimer);
-  longPressTimer = null;
   swipeStart = null;
+  dragAnchor = null;
+  rangeDragging = false;
 });
 
 // 오래된 iOS 홈 화면 웹앱처럼 Pointer Events가 없는 환경도 지원한다.
@@ -386,9 +374,9 @@ if (!window.PointerEvent) {
 
   calendarViewport.addEventListener('touchcancel', () => {
     touchSwipeStart = null;
-    if (longPressTimer) clearTimeout(longPressTimer);
-    longPressTimer = null;
     swipeStart = null;
+    dragAnchor = null;
+    rangeDragging = false;
   }, { passive: true });
 }
 
@@ -425,10 +413,11 @@ eventForm.addEventListener('submit', async (event) => {
     color: String(form.get('color')),
   };
   try {
-    if (window.sharedCalendar?.isConnected()) {
+    if (calendarScope === 'shared') {
       await window.sharedCalendar.upsertEvent(newEvent);
     } else {
       events.push(newEvent);
+      personalEvents = events;
       saveEvents();
     }
   } catch (error) {
@@ -443,7 +432,6 @@ eventForm.addEventListener('submit', async (event) => {
   eventForm.reset();
   eventForm.elements.color.value = 'mint';
   closeComposer();
-  rangeStatus.textContent = daysInSelection() > 1 ? `${daysInSelection()}일 일정이 추가됐어요` : '일정이 추가됐어요';
   render();
 });
 
@@ -454,9 +442,16 @@ document.addEventListener('keydown', (event) => {
 applyTheme(document.documentElement.dataset.theme || 'light');
 render();
 window.sharedCalendar?.init({
-  onEvents(sharedEvents) {
-    events = sharedEvents;
-    render();
+  onEvents(nextSharedEvents) {
+    sharedEvents = nextSharedEvents;
+    if (calendarScope === 'shared') {
+      events = nextSharedEvents;
+      render();
+    }
+  },
+  onConnection(connected) {
+    sharedCalendarButton.classList.toggle('is-connected', connected);
+    if (!connected && calendarScope === 'shared') setCalendarScope('personal');
   },
 }).catch((error) => {
   console.error('공유 캘린더를 시작하지 못했습니다.', error);

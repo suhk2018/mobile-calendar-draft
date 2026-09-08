@@ -6,6 +6,7 @@
   let couple = null;
   let channel = null;
   let eventHandler = () => {};
+  let connectionHandler = () => {};
 
   const byId = (id) => document.getElementById(id);
   const ui = {};
@@ -62,6 +63,7 @@
     ui.signedInView.hidden = !session;
     if (!session) {
       ui.accountButton.textContent = '공유 설정';
+      connectionHandler(false);
       return;
     }
     ui.accountEmail.textContent = session.user.email;
@@ -72,6 +74,7 @@
       ui.coupleName.textContent = couple.name;
       ui.inviteCode.textContent = couple.invite_code;
     }
+    connectionHandler(Boolean(couple));
   }
 
   function openSheet() {
@@ -96,11 +99,16 @@
         })
       : await client.auth.signInWithPassword(credentials);
     if (result.error) return showError(ui.authError, result.error.message);
-    if (mode === 'signup' && !result.data.session) showError(ui.authError, '확인 이메일을 보냈어요. 이메일 인증 후 로그인해 주세요.');
+    if (mode === 'signup' && result.data.user?.identities?.length === 0) {
+      showError(ui.authError, '이미 가입 요청된 이메일이에요. 위 로그인 버튼을 눌러 주세요.');
+    } else if (mode === 'signup' && !result.data.session) {
+      showError(ui.authError, '확인 이메일을 보냈어요. 이메일 인증 후 로그인해 주세요.');
+    }
   }
 
-  async function init({ onEvents }) {
+  async function init({ onEvents, onConnection }) {
     eventHandler = onEvents;
+    connectionHandler = onConnection || (() => {});
     ['accountButton', 'accountBackdrop', 'accountSheet', 'closeAccount', 'connectionNotice', 'signedOutView', 'signedInView', 'authForm', 'authError', 'signUpButton', 'accountEmail', 'signOutButton', 'coupleConnectedView', 'coupleSetupView', 'coupleName', 'inviteCode', 'createCoupleForm', 'joinCoupleForm', 'coupleError'].forEach((id) => { ui[id] = byId(id); });
     ui.accountButton.addEventListener('click', openSheet);
     ui.closeAccount.addEventListener('click', closeSheet);
@@ -153,5 +161,5 @@
     return true;
   }
 
-  window.sharedCalendar = { init, upsertEvent, deleteEvent, isConnected: () => Boolean(session && couple) };
+  window.sharedCalendar = { init, upsertEvent, deleteEvent, isConnected: () => Boolean(session && couple), openSettings: openSheet };
 })();

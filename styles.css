@@ -60,7 +60,7 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   padding: max(30px, env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) max(100px, calc(74px + env(safe-area-inset-bottom))) max(22px, env(safe-area-inset-left));
 }
 
-.topbar, .month-controls, .agenda-heading, .composer-heading, .form-row, .top-actions, .calendar-actions {
+.topbar, .month-controls, .agenda-heading, .composer-heading, .form-row, .top-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -101,8 +101,11 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .nav-button { width: 44px; height: 44px; border-radius: 15px; color: var(--text-secondary); font-size: 1.9rem; line-height: 1; }
 .nav-button:hover, .nav-button:focus-visible { background: var(--hover); }
 
-.calendar-actions { min-height: 36px; margin-bottom: 9px; padding: 0 4px; justify-content: flex-end; }
-.calendar-actions p { margin: 0; overflow: hidden; color: var(--text-tertiary); font-size: 0.72rem; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-scope { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 12px; padding: 4px; border-radius: 16px; background: var(--border); }
+.scope-button { min-height: 42px; border: 0; border-radius: 12px; background: transparent; color: var(--text-secondary); font-size: .84rem; font-weight: 700; }
+.scope-button.is-active { background: var(--surface); color: var(--primary-text); box-shadow: 0 2px 10px rgba(0, 27, 55, .07); }
+.scope-button:disabled { cursor: pointer; opacity: .65; }
+.scope-button.is-connected::after { display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--primary); content: ''; vertical-align: 1px; }
 
 .calendar-viewport { touch-action: pan-y; }
 .calendar-viewport.is-sliding-left { animation: slide-from-right 220ms cubic-bezier(.2,.7,.3,1); }
@@ -129,6 +132,8 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
   border-radius: 12px;
   background: transparent;
   color: var(--text);
+  user-select: none;
+  -webkit-user-select: none;
 }
 .day-cell:hover, .day-cell:focus-visible { background: var(--hover); outline: none; }
 .day-number { position: relative; z-index: 1; display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; font-size: 0.84rem; font-weight: 600; }
@@ -230,8 +235,6 @@ legend { margin-bottom: 8px; }
   .account-button { max-width: 76px; padding: 0 10px; }
   .calendar-panel { padding: 17px 7px 11px; border-radius: 22px; }
   .month-controls { padding: 0 3px 9px; }
-  .calendar-actions { padding: 0 7px; }
-  .calendar-actions p { font-size: 0.69rem; }
   .day-cell { min-height: 61px; padding: 5px 1px; }
   .day-number { width: 28px; height: 28px; }
   .agenda-panel { padding: 18px; border-radius: 22px; }
@@ -240,7 +243,6 @@ legend { margin-bottom: 8px; }
 
 @media (max-width: 360px) {
   .date-row { display: grid; grid-template-columns: 1fr 1fr; }
-  .calendar-actions p { font-size: 0.64rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
