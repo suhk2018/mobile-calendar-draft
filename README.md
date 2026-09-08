@@ -1,6 +1,6 @@
 # 모바일 캘린더
 
-휴대폰 브라우저와 홈 화면에서 앱처럼 사용할 수 있는 가벼운 캘린더 웹앱입니다.
+휴대폰 브라우저와 홈 화면에서 앱처럼 사용할 수 있는 캘린더 웹앱입니다. Supabase를 연결하면 두 사람이 같은 일정을 실시간으로 공유할 수 있습니다.
 
 ## 바로 사용하기
 
@@ -16,6 +16,8 @@
 - 라이트 모드와 다크 모드
 - 휴대폰 홈 화면 설치 및 오프라인 실행
 - 일정 데이터의 기기 내 저장
+- 이메일 로그인과 커플 초대 코드
+- 두 휴대폰 사이의 실시간 일정 동기화
 
 ## 사용 방법
 
@@ -33,6 +35,20 @@ app.js                캘린더, 일정, 스와이프 기능
 manifest.webmanifest  홈 화면 설치 설정
 sw.js                 오프라인 캐시와 업데이트 처리
 icon.svg              앱 아이콘
+supabase-config.js     Supabase 프로젝트 연결 정보
+shared-calendar.js     로그인, 커플 연결, 공유 동기화
+supabase-schema.sql    데이터베이스 테이블과 보안 정책
 ```
 
-별도의 빌드 과정 없이 정적 파일을 GitHub Pages로 배포합니다. 일정은 브라우저의 `localStorage`에 저장되므로 다른 기기와 자동 동기화되지는 않습니다.
+별도의 빌드 과정 없이 정적 파일을 GitHub Pages로 배포합니다. Supabase가 연결되지 않은 동안에는 일정이 브라우저의 `localStorage`에 저장됩니다.
+
+## 공유 기능 연결
+
+1. Supabase에서 새 프로젝트를 만듭니다.
+2. SQL Editor에서 `supabase-schema.sql` 전체를 실행합니다.
+3. Project Settings의 API 화면에서 Project URL과 anon public key를 확인합니다.
+4. `supabase-config.js`의 `url`, `anonKey`에 두 값을 입력합니다.
+5. 변경 내용을 GitHub에 푸시한 뒤 각자 회원가입합니다.
+6. 한 명이 공유 캘린더를 만들고, 표시된 초대 코드를 상대방에게 전달합니다.
+
+공개 저장소에는 `service_role` 키를 절대로 넣지 마세요. 브라우저에는 anon public key만 사용하고, 데이터 접근은 `supabase-schema.sql`의 RLS 정책으로 제한합니다.

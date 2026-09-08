@@ -2,7 +2,7 @@
   "id": "./",
   "name": "캘린더",
   "short_name": "캘린더",
-  "description": "휴대폰 홈 화면에서 앱처럼 사용하는 간단한 개인 캘린더",
+  "description": "두 사람이 함께 일정을 기록하고 공유하는 모바일 캘린더",
   "lang": "ko-KR",
   "start_url": "./?source=pwa",
   "scope": "./",

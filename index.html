@@ -9,9 +9,9 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=4" />
+    <link rel="manifest" href="manifest.webmanifest?v=5" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=4" />
+    <link rel="stylesheet" href="styles.css?v=5" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -27,6 +27,7 @@
           <h1>캘린더</h1>
         </div>
         <div class="top-actions">
+          <button class="text-button account-button" id="accountButton" type="button">공유 설정</button>
           <button class="text-button" id="todayButton" type="button">오늘</button>
           <button class="icon-button" id="themeButton" type="button" aria-label="다크 모드로 전환">☾</button>
         </div>
@@ -106,6 +107,59 @@
 
       <button class="add-button" id="openComposer" type="button" aria-label="새 일정 추가">+</button>
     </main>
+
+    <div class="account-backdrop" id="accountBackdrop" hidden></div>
+    <section class="account-sheet" id="accountSheet" aria-labelledby="accountTitle" aria-modal="true" role="dialog">
+      <div class="composer-heading">
+        <div>
+          <p class="eyebrow">TOGETHER</p>
+          <h2 id="accountTitle">캘린더 공유</h2>
+        </div>
+        <button class="close-composer" id="closeAccount" type="button" aria-label="공유 설정 닫기">×</button>
+      </div>
+
+      <div class="connection-notice" id="connectionNotice" hidden>
+        <strong>온라인 연결이 필요해요</strong>
+        <p>Supabase 프로젝트 주소와 공개 키를 설정하면 두 휴대폰이 연결됩니다.</p>
+      </div>
+
+      <div id="signedOutView">
+        <p class="sheet-description">각자 같은 커플 공간에 참여하면 일정이 실시간으로 함께 보여요.</p>
+        <form id="authForm">
+          <label>이메일<input name="email" type="email" autocomplete="email" required placeholder="name@example.com" /></label>
+          <label>비밀번호<input name="password" type="password" autocomplete="current-password" minlength="6" required placeholder="6자 이상" /></label>
+          <p class="form-error" id="authError" role="alert" hidden></p>
+          <button class="save-button" type="submit">로그인</button>
+          <button class="secondary-button" id="signUpButton" type="button">처음이라면 회원가입</button>
+        </form>
+      </div>
+
+      <div id="signedInView" hidden>
+        <div class="account-summary">
+          <div><span>로그인 계정</span><strong id="accountEmail"></strong></div>
+          <button class="delete-button" id="signOutButton" type="button">로그아웃</button>
+        </div>
+        <div id="coupleConnectedView" hidden>
+          <div class="couple-card">
+            <span>함께 쓰는 캘린더</span>
+            <strong id="coupleName"></strong>
+            <p>초대 코드 <button class="invite-code" id="inviteCode" type="button" title="눌러서 복사"></button></p>
+          </div>
+        </div>
+        <div id="coupleSetupView">
+          <form id="createCoupleForm">
+            <label>커플 캘린더 이름<input name="name" type="text" maxlength="30" required placeholder="예: 우리의 캘린더" /></label>
+            <button class="save-button" type="submit">새 공유 캘린더 만들기</button>
+          </form>
+          <div class="or-divider"><span>또는</span></div>
+          <form id="joinCoupleForm">
+            <label>상대방의 초대 코드<input name="code" type="text" maxlength="8" required placeholder="예: LOVE1234" /></label>
+            <button class="secondary-button" type="submit">초대 코드로 참여하기</button>
+          </form>
+          <p class="form-error" id="coupleError" role="alert" hidden></p>
+        </div>
+      </div>
+    </section>
     <template id="eventTemplate">
       <article class="event-item">
         <span class="event-marker"></span>
@@ -116,6 +170,9 @@
         <button type="button" class="delete-button" aria-label="일정 삭제">삭제</button>
       </article>
     </template>
-    <script src="app.js?v=4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=5"></script>
+    <script src="shared-calendar.js?v=5"></script>
+    <script src="app.js?v=5"></script>
   </body>
 </html>

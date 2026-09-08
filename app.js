@@ -179,10 +179,19 @@ function renderAgenda() {
     const timeText = event.time || '시간 미정';
     item.querySelector('.event-copy span').textContent = `${formatEventDate(event)} · ${timeText}`;
     const deleteButton = item.querySelector('.delete-button');
-    deleteButton.addEventListener('click', () => {
-      events = events.filter((savedEvent) => savedEvent.id !== event.id);
-      saveEvents();
-      render();
+    deleteButton.addEventListener('click', async () => {
+      try {
+        if (window.sharedCalendar?.isConnected()) {
+          await window.sharedCalendar.deleteEvent(event.id);
+        } else {
+          events = events.filter((savedEvent) => savedEvent.id !== event.id);
+          saveEvents();
+          render();
+        }
+      } catch (error) {
+        rangeStatus.textContent = '일정을 삭제하지 못했어요. 연결을 확인해 주세요.';
+        console.error(error);
+      }
     });
     eventList.append(item);
   });
@@ -393,7 +402,7 @@ eventEndDate.addEventListener('change', () => {
   formError.hidden = true;
 });
 
-eventForm.addEventListener('submit', (event) => {
+eventForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = new FormData(eventForm);
   const startDate = String(form.get('startDate'));
@@ -406,7 +415,7 @@ eventForm.addEventListener('submit', (event) => {
     return;
   }
 
-  events.push({
+  const newEvent = {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     date: startDate,
     startDate,
@@ -414,8 +423,20 @@ eventForm.addEventListener('submit', (event) => {
     time: String(form.get('time')),
     title,
     color: String(form.get('color')),
-  });
-  saveEvents();
+  };
+  try {
+    if (window.sharedCalendar?.isConnected()) {
+      await window.sharedCalendar.upsertEvent(newEvent);
+    } else {
+      events.push(newEvent);
+      saveEvents();
+    }
+  } catch (error) {
+    formError.textContent = '일정을 저장하지 못했어요. 인터넷 연결을 확인해 주세요.';
+    formError.hidden = false;
+    console.error(error);
+    return;
+  }
   selectedStartDate = fromKey(startDate);
   selectedEndDate = fromKey(endDate);
   cursor = new Date(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), 1);
@@ -432,6 +453,14 @@ document.addEventListener('keydown', (event) => {
 
 applyTheme(document.documentElement.dataset.theme || 'light');
 render();
+window.sharedCalendar?.init({
+  onEvents(sharedEvents) {
+    events = sharedEvents;
+    render();
+  },
+}).catch((error) => {
+  console.error('공유 캘린더를 시작하지 못했습니다.', error);
+});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
