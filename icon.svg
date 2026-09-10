@@ -1,28 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">캘린더</title>
+  <title id="title">체크 캘린더</title>
   <defs>
-    <linearGradient id="background" x1="72" y1="38" x2="444" y2="482" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#64adff"/>
-      <stop offset=".48" stop-color="#3182f6"/>
-      <stop offset="1" stop-color="#1464d7"/>
-    </linearGradient>
-    <linearGradient id="paper" x1="256" y1="116" x2="256" y2="421" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#fff"/>
-      <stop offset="1" stop-color="#f4f7fb"/>
-    </linearGradient>
-    <filter id="shadow" x="48" y="76" width="416" height="388" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="16" stdDeviation="17" flood-color="#073f94" flood-opacity=".28"/>
-    </filter>
+    <linearGradient id="background" x1="58" y1="38" x2="454" y2="478" gradientUnits="userSpaceOnUse"><stop stop-color="#2d3958"/><stop offset="1" stop-color="#10182b"/></linearGradient>
+    <linearGradient id="header" x1="150" y1="90" x2="374" y2="210" gradientUnits="userSpaceOnUse"><stop stop-color="#66a4ff"/><stop offset="1" stop-color="#3178ed"/></linearGradient>
+    <linearGradient id="paper" x1="256" y1="190" x2="256" y2="418" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#eef3fb"/></linearGradient>
+    <filter id="shadow" x="54" y="58" width="404" height="414" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#050a16" flood-opacity=".38"/></filter>
+    <clipPath id="calendarClip"><rect x="102" y="94" width="308" height="324" rx="68"/></clipPath>
   </defs>
   <rect width="512" height="512" fill="url(#background)"/>
-  <path d="M64 0h384c35.3 0 64 28.7 64 64v40C390 49 218 43 63 122L0 154V64C0 28.7 28.7 0 64 0Z" fill="#fff" opacity=".1"/>
+  <circle cx="424" cy="68" r="180" fill="#4d8ef7" opacity=".08"/>
+  <circle cx="58" cy="486" r="196" fill="#000" opacity=".08"/>
   <g filter="url(#shadow)">
-    <rect x="82" y="105" width="348" height="316" rx="58" fill="url(#paper)"/>
-    <path d="M82 163c0-32 26-58 58-58h232c32 0 58 26 58 58v53H82v-53Z" fill="#ff5b66"/>
-    <circle cx="161" cy="160" r="14" fill="#fff" opacity=".96"/>
-    <circle cx="351" cy="160" r="14" fill="#fff" opacity=".96"/>
-    <rect x="150" y="78" width="22" height="94" rx="11" fill="#fff"/>
-    <rect x="340" y="78" width="22" height="94" rx="11" fill="#fff"/>
-    <text x="256" y="361" fill="#1b64da" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="132" font-weight="700" text-anchor="middle">9</text>
+    <rect x="102" y="94" width="308" height="324" rx="68" fill="url(#paper)"/>
+    <g clip-path="url(#calendarClip)">
+      <rect x="102" y="94" width="308" height="112" fill="url(#header)"/>
+      <path d="M102 178c88-28 211-30 308 0v28H102Z" fill="#fff" opacity=".08"/>
+    </g>
+    <path d="m169 294 54 52 121-139" fill="none" stroke="#3178ed" stroke-width="35" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>

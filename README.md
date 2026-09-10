@@ -43,6 +43,10 @@ app.js                캘린더, 일정, 스와이프 기능
 manifest.webmanifest  홈 화면 설치 설정
 sw.js                 오프라인 캐시와 업데이트 처리
 icon.svg              앱 아이콘
+apple-touch-icon.png  iPhone 홈 화면용 180px 아이콘
+icon-192.png          Android 일반 아이콘
+icon-512.png          Android 고해상도 일반 아이콘
+icon-maskable-512.png Android 적응형(마스커블) 아이콘
 supabase-config.js     Supabase 프로젝트 연결 정보
 shared-calendar.js     로그인, 커플 연결, 공유 동기화
 supabase-schema.sql    데이터베이스 테이블과 보안 정책
