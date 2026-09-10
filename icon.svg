@@ -1,21 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
   <title id="title">체크 캘린더</title>
   <defs>
-    <linearGradient id="background" x1="58" y1="38" x2="454" y2="478" gradientUnits="userSpaceOnUse"><stop stop-color="#80bdff"/><stop offset="1" stop-color="#3e80f5"/></linearGradient>
-    <linearGradient id="header" x1="150" y1="90" x2="374" y2="210" gradientUnits="userSpaceOnUse"><stop stop-color="#5f9cff"/><stop offset="1" stop-color="#246be3"/></linearGradient>
-    <linearGradient id="paper" x1="256" y1="190" x2="256" y2="418" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#eef3fb"/></linearGradient>
-    <filter id="shadow" x="54" y="58" width="404" height="414" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#1758bd" flood-opacity=".24"/></filter>
-    <clipPath id="calendarClip"><rect x="102" y="94" width="308" height="324" rx="68"/></clipPath>
+    <linearGradient id="header" x1="60" y1="30" x2="452" y2="214" gradientUnits="userSpaceOnUse"><stop stop-color="#6aa7ff"/><stop offset="1" stop-color="#2870e8"/></linearGradient>
+    <linearGradient id="paper" x1="256" y1="202" x2="256" y2="512" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#eef3fb"/></linearGradient>
   </defs>
-  <rect width="512" height="512" fill="url(#background)"/>
-  <circle cx="424" cy="68" r="180" fill="#fff" opacity=".12"/>
-  <circle cx="58" cy="486" r="196" fill="#266bdc" opacity=".10"/>
-  <g filter="url(#shadow)">
-    <rect x="102" y="94" width="308" height="324" rx="68" fill="url(#paper)"/>
-    <g clip-path="url(#calendarClip)">
-      <rect x="102" y="94" width="308" height="112" fill="url(#header)"/>
-      <path d="M102 178c88-28 211-30 308 0v28H102Z" fill="#fff" opacity=".08"/>
-    </g>
-    <path d="m169 294 54 52 121-139" fill="none" stroke="#3178ed" stroke-width="35" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
+  <rect width="512" height="512" fill="url(#paper)"/>
+  <rect width="512" height="202" fill="url(#header)"/>
+  <path d="M0 166c146-32 356-32 512 0v36H0Z" fill="#fff" opacity=".10"/>
+  <circle cx="430" cy="42" r="128" fill="#fff" opacity=".08"/>
+  <path d="m145 309 78 75 154-178" fill="none" stroke="#3178ed" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
