@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
   <title id="title">체크 캘린더</title>
   <defs>
-    <linearGradient id="background" x1="58" y1="38" x2="454" y2="478" gradientUnits="userSpaceOnUse"><stop stop-color="#2d3958"/><stop offset="1" stop-color="#10182b"/></linearGradient>
-    <linearGradient id="header" x1="150" y1="90" x2="374" y2="210" gradientUnits="userSpaceOnUse"><stop stop-color="#66a4ff"/><stop offset="1" stop-color="#3178ed"/></linearGradient>
+    <linearGradient id="background" x1="58" y1="38" x2="454" y2="478" gradientUnits="userSpaceOnUse"><stop stop-color="#80bdff"/><stop offset="1" stop-color="#3e80f5"/></linearGradient>
+    <linearGradient id="header" x1="150" y1="90" x2="374" y2="210" gradientUnits="userSpaceOnUse"><stop stop-color="#5f9cff"/><stop offset="1" stop-color="#246be3"/></linearGradient>
     <linearGradient id="paper" x1="256" y1="190" x2="256" y2="418" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#eef3fb"/></linearGradient>
-    <filter id="shadow" x="54" y="58" width="404" height="414" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#050a16" flood-opacity=".38"/></filter>
+    <filter id="shadow" x="54" y="58" width="404" height="414" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#1758bd" flood-opacity=".24"/></filter>
     <clipPath id="calendarClip"><rect x="102" y="94" width="308" height="324" rx="68"/></clipPath>
   </defs>
   <rect width="512" height="512" fill="url(#background)"/>
-  <circle cx="424" cy="68" r="180" fill="#4d8ef7" opacity=".08"/>
-  <circle cx="58" cy="486" r="196" fill="#000" opacity=".08"/>
+  <circle cx="424" cy="68" r="180" fill="#fff" opacity=".12"/>
+  <circle cx="58" cy="486" r="196" fill="#266bdc" opacity=".10"/>
   <g filter="url(#shadow)">
     <rect x="102" y="94" width="308" height="324" rx="68" fill="url(#paper)"/>
     <g clip-path="url(#calendarClip)">

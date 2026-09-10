@@ -272,12 +272,24 @@ function updateDraggedRange(date) {
   render();
 }
 
+function fitCalendarTitle() {
+  currentCalendarTitle.style.removeProperty('font-size');
+  requestAnimationFrame(() => {
+    let fontSize = Number.parseFloat(getComputedStyle(currentCalendarTitle).fontSize);
+    while (currentCalendarTitle.scrollWidth > currentCalendarTitle.clientWidth && fontSize > 17) {
+      fontSize -= 1;
+      currentCalendarTitle.style.fontSize = `${fontSize}px`;
+    }
+  });
+}
+
 function updateCalendarHeading() {
   const activeName = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId)?.name;
   const title = calendarScope === 'shared' ? (activeName || '공유 캘린더') : '나의 일정';
   currentCalendarTitle.textContent = title;
   currentCalendarTitle.title = title;
   composerScopeLabel.textContent = calendarScope === 'shared' ? (activeName || 'TOGETHER SCHEDULE') : 'MY SCHEDULE';
+  fitCalendarTitle();
 }
 
 function setCalendarScope(scope) {
@@ -564,6 +576,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 applyTheme(document.documentElement.dataset.theme || 'light');
+window.addEventListener('resize', fitCalendarTitle);
 render();
 window.sharedCalendar?.init({
   onEvents(nextSharedEvents) {
