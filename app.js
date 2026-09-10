@@ -27,6 +27,7 @@ const accountButton = document.querySelector('#accountButton');
 
 const storageKey = 'green-calendar-events-v1';
 const themeStorageKey = 'calendar-theme-v1';
+const calendarScopeStorageKey = 'calendar-scope-v1';
 const today = startOfDay(new Date());
 let cursor = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedStartDate = new Date(today);
@@ -38,6 +39,7 @@ let dragAnchor = null;
 let rangeDragging = false;
 let longPressTimer = null;
 let calendarScope = 'personal';
+let preferredCalendarScope = localStorage.getItem(calendarScopeStorageKey) === 'shared' ? 'shared' : 'personal';
 let personalEvents = loadEvents();
 let sharedEvents = [];
 let events = personalEvents;
@@ -298,6 +300,8 @@ function setCalendarScope(scope) {
     return;
   }
   calendarScope = scope;
+  preferredCalendarScope = scope;
+  localStorage.setItem(calendarScopeStorageKey, scope);
   events = scope === 'shared' ? sharedEvents : personalEvents;
   personalCalendarButton.classList.toggle('is-active', scope === 'personal');
   personalCalendarButton.setAttribute('aria-pressed', String(scope === 'personal'));
@@ -592,6 +596,10 @@ window.sharedCalendar?.init({
   onCalendars(nextCalendars, activeId) {
     sharedCalendars = nextCalendars;
     activeSharedCalendarId = activeId;
+    if (preferredCalendarScope === 'shared' && activeSharedCalendarId) {
+      setCalendarScope('shared');
+      return;
+    }
     updateCalendarHeading();
     renderSharedCalendarTabs();
   },
