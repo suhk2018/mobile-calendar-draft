@@ -4,6 +4,7 @@ const monthTitle = document.querySelector('#monthTitle');
 const selectedDateLabel = document.querySelector('#selectedDateLabel');
 const agendaTitle = document.querySelector('#agendaTitle');
 const eventCount = document.querySelector('#eventCount');
+const addEventButton = document.querySelector('#addEventButton');
 const eventList = document.querySelector('#eventList');
 const eventForm = document.querySelector('#eventForm');
 const eventStartDate = document.querySelector('#eventStartDate');
@@ -202,7 +203,7 @@ function renderCalendar() {
     button.append(eventLabels);
     button.addEventListener('click', () => {
       if (Date.now() < ignoreClickUntil) return;
-      selectDateAndOpenComposer(date);
+      selectDate(date);
     });
     calendarGrid.append(button);
   }
@@ -222,7 +223,7 @@ function renderAgenda() {
   if (selectedEvents.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'empty-state';
-    empty.textContent = '아직 일정이 없어요. 날짜를 누르면 추가할 수 있어요.';
+    empty.textContent = '아직 일정이 없어요. 일정 추가 버튼으로 새 일정을 만들어 보세요.';
     eventList.append(empty);
     return;
   }
@@ -258,13 +259,12 @@ function render() {
   renderAgenda();
 }
 
-function selectDateAndOpenComposer(date) {
+function selectDate(date) {
   const chosenDate = startOfDay(date);
   selectedStartDate = chosenDate;
   selectedEndDate = chosenDate;
   cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
   render();
-  openComposer();
 }
 
 function updateDraggedRange(date) {
@@ -371,7 +371,7 @@ function openComposer() {
   formError.hidden = true;
   composerBackdrop.hidden = false;
   composer.classList.add('is-open');
-  setTimeout(() => eventTitle.focus(), 180);
+  setTimeout(() => composer.focus({ preventScroll: true }), 180);
 }
 
 function closeComposer() {
@@ -403,6 +403,7 @@ document.querySelector('#todayButton').addEventListener('click', () => {
   render();
 });
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
+addEventButton.addEventListener('click', openComposer);
 composerBackdrop.addEventListener('click', closeComposer);
 themeButton.addEventListener('click', toggleTheme);
 menuButton.addEventListener('click', openSideMenu);
@@ -456,7 +457,6 @@ function endCalendarGesture(x, y) {
     rangeDragging = false;
     dragAnchor = null;
     ignoreClickUntil = Date.now() + 400;
-    openComposer();
     return;
   }
   dragAnchor = null;

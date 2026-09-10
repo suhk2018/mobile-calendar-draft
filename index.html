@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=16" />
-    <link rel="icon" href="icon.svg?v=16" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=16" />
-    <link rel="stylesheet" href="styles.css?v=16" />
+    <link rel="manifest" href="manifest.webmanifest?v=17" />
+    <link rel="icon" href="icon.svg?v=17" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=17" />
+    <link rel="stylesheet" href="styles.css?v=17" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -56,13 +56,16 @@
             <p class="eyebrow" id="selectedDateLabel">선택한 날짜</p>
             <h2 id="agendaTitle">일정을 선택하세요</h2>
           </div>
-          <span class="event-count" id="eventCount">0개</span>
+          <div class="agenda-actions">
+            <span class="event-count" id="eventCount">0개</span>
+            <button class="agenda-add-button" id="addEventButton" type="button">일정 추가</button>
+          </div>
         </div>
         <div class="event-list" id="eventList" aria-live="polite"></div>
       </section>
 
       <div class="composer-backdrop" id="composerBackdrop" hidden></div>
-      <section class="composer" aria-labelledby="composerTitle" aria-modal="true" role="dialog">
+      <section class="composer" aria-labelledby="composerTitle" aria-modal="true" role="dialog" tabindex="-1">
         <div class="composer-heading">
           <div>
             <p class="eyebrow" id="composerScopeLabel">MY SCHEDULE</p>
@@ -188,8 +191,8 @@
       </article>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=16"></script>
-    <script src="shared-calendar.js?v=16"></script>
-    <script src="app.js?v=16"></script>
+    <script src="supabase-config.js?v=17"></script>
+    <script src="shared-calendar.js?v=17"></script>
+    <script src="app.js?v=17"></script>
   </body>
 </html>
