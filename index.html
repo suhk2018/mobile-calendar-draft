@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=12" />
-    <link rel="icon" href="icon.svg?v=12" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=12" />
-    <link rel="stylesheet" href="styles.css?v=12" />
+    <link rel="manifest" href="manifest.webmanifest?v=13" />
+    <link rel="icon" href="icon.svg?v=13" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=13" />
+    <link rel="stylesheet" href="styles.css?v=13" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -26,8 +26,8 @@
         <div class="brand-group">
           <button class="menu-button" id="menuButton" type="button" aria-label="캘린더 메뉴 열기">☰</button>
           <div>
-            <p class="eyebrow" id="currentCalendarLabel">나의 일정</p>
-            <h1>캘린더</h1>
+            <p class="eyebrow">MY CALENDAR</p>
+            <h1 id="currentCalendarTitle" aria-live="polite">나의 일정</h1>
           </div>
         </div>
         <div class="top-actions">
@@ -188,8 +188,8 @@
       </article>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=12"></script>
-    <script src="shared-calendar.js?v=12"></script>
-    <script src="app.js?v=12"></script>
+    <script src="supabase-config.js?v=13"></script>
+    <script src="shared-calendar.js?v=13"></script>
+    <script src="app.js?v=13"></script>
   </body>
 </html>

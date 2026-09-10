@@ -18,7 +18,7 @@ const personalCalendarButton = document.querySelector('#personalCalendarButton')
 const sharedCalendarButton = document.querySelector('#sharedCalendarButton');
 const sharedCalendarTabs = document.querySelector('#sharedCalendarTabs');
 const composerScopeLabel = document.querySelector('#composerScopeLabel');
-const currentCalendarLabel = document.querySelector('#currentCalendarLabel');
+const currentCalendarTitle = document.querySelector('#currentCalendarTitle');
 const menuButton = document.querySelector('#menuButton');
 const sideMenu = document.querySelector('#sideMenu');
 const menuBackdrop = document.querySelector('#menuBackdrop');
@@ -272,6 +272,14 @@ function updateDraggedRange(date) {
   render();
 }
 
+function updateCalendarHeading() {
+  const activeName = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId)?.name;
+  const title = calendarScope === 'shared' ? (activeName || '공유 캘린더') : '나의 일정';
+  currentCalendarTitle.textContent = title;
+  currentCalendarTitle.title = title;
+  composerScopeLabel.textContent = calendarScope === 'shared' ? (activeName || 'TOGETHER SCHEDULE') : 'MY SCHEDULE';
+}
+
 function setCalendarScope(scope) {
   if (scope === 'shared' && !window.sharedCalendar?.isConnected()) {
     window.sharedCalendar?.openSettings();
@@ -282,9 +290,7 @@ function setCalendarScope(scope) {
   personalCalendarButton.classList.toggle('is-active', scope === 'personal');
   personalCalendarButton.setAttribute('aria-pressed', String(scope === 'personal'));
   sharedCalendarButton.setAttribute('aria-pressed', 'false');
-  const activeName = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId)?.name;
-  composerScopeLabel.textContent = scope === 'shared' ? (activeName || 'TOGETHER SCHEDULE') : 'MY SCHEDULE';
-  currentCalendarLabel.textContent = scope === 'shared' ? (activeName || '공유 캘린더') : '나의 일정';
+  updateCalendarHeading();
   renderSharedCalendarTabs();
   render();
 }
@@ -573,7 +579,11 @@ window.sharedCalendar?.init({
   onCalendars(nextCalendars, activeId) {
     sharedCalendars = nextCalendars;
     activeSharedCalendarId = activeId;
+    updateCalendarHeading();
     renderSharedCalendarTabs();
+  },
+  onCalendarActivated() {
+    setCalendarScope('shared');
   },
 }).catch((error) => {
   console.error('공유 캘린더를 시작하지 못했습니다.', error);

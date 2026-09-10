@@ -9,6 +9,7 @@
   let eventHandler = () => {};
   let connectionHandler = () => {};
   let calendarsHandler = () => {};
+  let calendarActivatedHandler = () => {};
   const byId = (id) => document.getElementById(id);
   const ui = {};
 
@@ -133,10 +134,27 @@
     else if (mode === 'signup' && !result.data.session) showError(ui.authError, '확인 이메일을 보냈어요. 이메일 인증 후 로그인해 주세요.');
   }
 
-  async function init({ onEvents, onConnection, onCalendars }) {
+  async function submitCalendarForm(form, action) {
+    const button = form.querySelector('button[type="submit"]');
+    if (button.disabled) return;
+    button.disabled = true;
+    form.setAttribute('aria-busy', 'true');
+    try {
+      await action();
+    } catch (error) {
+      console.error(error);
+      showError(ui.coupleError, '처리 중 문제가 생겼어요. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
+    } finally {
+      button.disabled = false;
+      form.removeAttribute('aria-busy');
+    }
+  }
+
+  async function init({ onEvents, onConnection, onCalendars, onCalendarActivated }) {
     eventHandler = onEvents;
     connectionHandler = onConnection || (() => {});
     calendarsHandler = onCalendars || (() => {});
+    calendarActivatedHandler = onCalendarActivated || (() => {});
     ['accountButton', 'accountBackdrop', 'accountSheet', 'closeAccount', 'connectionNotice', 'signedOutView', 'signedInView', 'authForm', 'authError', 'signUpButton', 'accountEmail', 'signOutButton', 'coupleConnectedView', 'coupleSetupView', 'coupleList', 'createCoupleForm', 'joinCoupleForm', 'coupleError'].forEach((id) => { ui[id] = byId(id); });
     ui.accountButton.addEventListener('click', openSheet);
     ui.closeAccount.addEventListener('click', closeSheet);
@@ -144,21 +162,33 @@
     ui.authForm.addEventListener('submit', (event) => { event.preventDefault(); runAuth('signin', event.currentTarget); });
     ui.signUpButton.addEventListener('click', () => runAuth('signup', ui.authForm));
     ui.signOutButton.addEventListener('click', () => client.auth.signOut());
-    ui.createCoupleForm.addEventListener('submit', async (event) => {
-      event.preventDefault(); showError(ui.coupleError, '');
-      const name = String(new FormData(event.currentTarget).get('name')).trim();
-      const { data, error } = await client.rpc('create_couple', { couple_name: name });
-      if (error) return showError(ui.coupleError, error.message);
-      event.currentTarget.reset();
-      await loadCalendars(data);
+    ui.createCoupleForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      submitCalendarForm(form, async () => {
+        showError(ui.coupleError, '');
+        const name = String(new FormData(form).get('name')).trim();
+        const { data, error } = await client.rpc('create_couple', { couple_name: name });
+        if (error) return showError(ui.coupleError, error.message);
+        form.reset();
+        await loadCalendars(data);
+        calendarActivatedHandler(data);
+        closeSheet();
+      });
     });
-    ui.joinCoupleForm.addEventListener('submit', async (event) => {
-      event.preventDefault(); showError(ui.coupleError, '');
-      const code = String(new FormData(event.currentTarget).get('code')).trim().toUpperCase();
-      const { data, error } = await client.rpc('join_couple', { invitation_code: code });
-      if (error) return showError(ui.coupleError, error.message);
-      event.currentTarget.reset();
-      await loadCalendars(data);
+    ui.joinCoupleForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      submitCalendarForm(form, async () => {
+        showError(ui.coupleError, '');
+        const code = String(new FormData(form).get('code')).trim().toUpperCase();
+        const { data, error } = await client.rpc('join_couple', { invitation_code: code });
+        if (error) return showError(ui.coupleError, error.message);
+        form.reset();
+        await loadCalendars(data);
+        calendarActivatedHandler(data);
+        closeSheet();
+      });
     });
     renderAccount();
     if (!configured) return;
