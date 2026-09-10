@@ -17,6 +17,7 @@
 - 날짜 칸에서 일정 제목 바로 확인
 - 개인 일정과 함께하는 일정 분리
 - 왼쪽 목록에서 여러 공유 캘린더 생성·참여·전환
+- 공유 캘린더 소유자의 삭제와 참여자의 나가기
 - 대한민국 공휴일 자동 표시
 - 10가지 일정 색상
 - 라이트 모드와 다크 모드
@@ -46,6 +47,7 @@ supabase-config.js     Supabase 프로젝트 연결 정보
 shared-calendar.js     로그인, 커플 연결, 공유 동기화
 supabase-schema.sql    데이터베이스 테이블과 보안 정책
 supabase-multi-calendar-migration.sql  기존 DB의 다중 캘린더 마이그레이션
+supabase-delete-calendar-migration.sql 공유 캘린더 삭제/나가기 마이그레이션
 ```
 
 별도의 빌드 과정 없이 정적 파일을 GitHub Pages로 배포합니다. Supabase가 연결되지 않은 동안에는 일정이 브라우저의 `localStorage`에 저장됩니다.
@@ -59,6 +61,6 @@ supabase-multi-calendar-migration.sql  기존 DB의 다중 캘린더 마이그�
 5. 변경 내용을 GitHub에 푸시한 뒤 각자 회원가입합니다.
 6. 한 명이 공유 캘린더를 만들고, 표시된 초대 코드를 상대방에게 전달합니다.
 
-기존 Supabase 프로젝트를 사용 중이라면 SQL Editor에서 `supabase-multi-calendar-migration.sql`을 한 번 실행해야 여러 공유 캘린더와 추가 색상을 사용할 수 있습니다.
+기존 Supabase 프로젝트를 사용 중이라면 SQL Editor에서 `supabase-multi-calendar-migration.sql`과 `supabase-delete-calendar-migration.sql`을 한 번씩 실행해야 다중 공유 캘린더, 추가 색상, 삭제·나가기 기능을 사용할 수 있습니다.
 
 공개 저장소에는 `service_role` 키를 절대로 넣지 마세요. 브라우저에는 anon public key만 사용하고, 데이터 접근은 `supabase-schema.sql`의 RLS 정책으로 제한합니다.

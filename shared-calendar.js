@@ -42,7 +42,7 @@
     calendars = [];
     activeCalendar = null;
     if (!session) return renderAccount();
-    const { data, error } = await client.from('couple_members').select('couple_id, joined_at, couples(id, name, invite_code)').eq('user_id', session.user.id).order('joined_at');
+    const { data, error } = await client.from('couple_members').select('couple_id, joined_at, couples(id, name, invite_code, created_by)').eq('user_id', session.user.id).order('joined_at');
     if (error) throw error;
     calendars = data.map((item) => item.couples).filter(Boolean);
     const savedId = preferredId || localStorage.getItem('active-shared-calendar-v1');
@@ -67,6 +67,25 @@
       openButton.className = 'calendar-open-button';
       openButton.textContent = calendar.id === activeCalendar?.id ? '선택됨' : '열기';
       openButton.addEventListener('click', async () => { await selectCalendar(calendar.id); closeSheet(); });
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.className = 'calendar-delete-button';
+      const isOwner = calendar.created_by === session.user.id;
+      removeButton.textContent = isOwner ? '삭제' : '나가기';
+      removeButton.addEventListener('click', async () => {
+        const message = isOwner
+          ? `'${calendar.name}' 캘린더와 등록된 공유 일정을 모두 삭제할까요? 이 작업은 되돌릴 수 없어요.`
+          : `'${calendar.name}' 캘린더에서 나갈까요?`;
+        if (!window.confirm(message)) return;
+        showError(ui.coupleError, '');
+        const { error } = await client.rpc('delete_or_leave_couple', { target_couple: calendar.id });
+        if (error) return showError(ui.coupleError, error.message);
+        if (calendar.id === activeCalendar?.id) localStorage.removeItem('active-shared-calendar-v1');
+        await loadCalendars();
+      });
+      const actions = document.createElement('div');
+      actions.className = 'calendar-card-actions';
+      actions.append(openButton, removeButton);
       const invite = document.createElement('p');
       invite.append('초대 코드 ');
       const inviteButton = document.createElement('button');
@@ -80,7 +99,7 @@
         setTimeout(() => { inviteButton.textContent = calendar.invite_code; }, 1200);
       });
       invite.append(inviteButton);
-      card.append(caption, name, openButton, invite);
+      card.append(caption, name, actions, invite);
       ui.coupleList.append(card);
     });
   }
