@@ -27,7 +27,16 @@
     if (channel) client.removeChannel(channel);
     channel = null;
     if (!activeCalendar) return;
-    channel = client.channel(`events:${activeCalendar.id}`).on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `couple_id=eq.${activeCalendar.id}` }, loadEvents).subscribe();
+    channel = client.channel(`events:${activeCalendar.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `couple_id=eq.${activeCalendar.id}` }, loadEvents)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'couples' }, (payload) => {
+        if (!calendars.some((calendar) => calendar.id === payload.new.id)) return;
+        calendars = calendars.map((calendar) => calendar.id === payload.new.id ? { ...calendar, ...payload.new } : calendar);
+        activeCalendar = calendars.find((calendar) => calendar.id === activeCalendar?.id) || activeCalendar;
+        renderAccount();
+        calendarsHandler(calendars, activeCalendar?.id || null);
+      })
+      .subscribe();
   }
 
   async function selectCalendar(id) {
@@ -86,7 +95,52 @@
       });
       const actions = document.createElement('div');
       actions.className = 'calendar-card-actions';
-      actions.append(openButton, removeButton);
+      actions.append(openButton);
+      const renameForm = document.createElement('form');
+      renameForm.className = 'calendar-rename-form';
+      renameForm.hidden = true;
+      const renameInput = document.createElement('input');
+      renameInput.type = 'text';
+      renameInput.maxLength = 30;
+      renameInput.required = true;
+      renameInput.value = calendar.name;
+      renameInput.setAttribute('aria-label', '새 캘린더 이름');
+      const renameSaveButton = document.createElement('button');
+      renameSaveButton.type = 'submit';
+      renameSaveButton.textContent = '저장';
+      const renameCancelButton = document.createElement('button');
+      renameCancelButton.type = 'button';
+      renameCancelButton.textContent = '취소';
+      renameCancelButton.addEventListener('click', () => {
+        renameInput.value = calendar.name;
+        renameForm.hidden = true;
+      });
+      renameForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const nextName = renameInput.value.trim();
+        if (!nextName || renameSaveButton.disabled) return;
+        showError(ui.coupleError, '');
+        renameSaveButton.disabled = true;
+        const { error } = await client.rpc('rename_couple', { target_couple: calendar.id, new_name: nextName });
+        renameSaveButton.disabled = false;
+        if (error) return showError(ui.coupleError, error.message);
+        renameForm.hidden = true;
+        await loadCalendars(calendar.id);
+      });
+      renameForm.append(renameInput, renameSaveButton, renameCancelButton);
+      if (isOwner) {
+        const renameButton = document.createElement('button');
+        renameButton.type = 'button';
+        renameButton.className = 'calendar-rename-button';
+        renameButton.textContent = '이름 변경';
+        renameButton.addEventListener('click', () => {
+          renameForm.hidden = false;
+          renameInput.focus();
+          renameInput.select();
+        });
+        actions.append(renameButton);
+      }
+      actions.append(removeButton);
       const invite = document.createElement('p');
       invite.append('초대 코드 ');
       const inviteButton = document.createElement('button');
@@ -100,7 +154,7 @@
         setTimeout(() => { inviteButton.textContent = calendar.invite_code; }, 1200);
       });
       invite.append(inviteButton);
-      card.append(caption, name, actions, invite);
+      card.append(caption, name, actions, invite, renameForm);
       ui.coupleList.append(card);
     });
   }

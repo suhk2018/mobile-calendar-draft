@@ -61,6 +61,10 @@ function fromKey(key) {
   return new Date(year, month - 1, day);
 }
 
+function addDays(date, amount) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + amount);
+}
+
 function eventStart(event) {
   return event.startDate || event.date;
 }
@@ -152,6 +156,49 @@ function formatEventDate(event) {
   return `${formatShortDate(fromKey(start))} – ${formatShortDate(fromKey(end))}`;
 }
 
+function renderEventBars(firstVisible) {
+  const previousLaneByEvent = new Map();
+
+  for (let week = 0; week < 6; week += 1) {
+    const weekStartKey = toKey(addDays(firstVisible, week * 7));
+    const weekEndKey = toKey(addDays(firstVisible, week * 7 + 6));
+    const laneEnds = [null, null];
+    const weekEvents = events
+      .filter((event) => eventOverlapsRange(event, weekStartKey, weekEndKey))
+      .map((event) => ({
+        event,
+        clippedStart: eventStart(event) < weekStartKey ? weekStartKey : eventStart(event),
+        clippedEnd: eventEnd(event) > weekEndKey ? weekEndKey : eventEnd(event),
+      }))
+      .sort((a, b) => a.clippedStart.localeCompare(b.clippedStart)
+        || b.clippedEnd.localeCompare(a.clippedEnd)
+        || a.event.title.localeCompare(b.event.title, 'ko'));
+
+    weekEvents.forEach(({ event, clippedStart, clippedEnd }) => {
+      const preferredLane = previousLaneByEvent.get(event.id);
+      let lane = Number.isInteger(preferredLane) && (!laneEnds[preferredLane] || laneEnds[preferredLane] < clippedStart)
+        ? preferredLane
+        : laneEnds.findIndex((laneEnd) => !laneEnd || laneEnd < clippedStart);
+      if (lane < 0) return;
+
+      laneEnds[lane] = clippedEnd;
+      previousLaneByEvent.set(event.id, lane);
+      const startColumn = addDays(firstVisible, week * 7).getDay() + Math.round((fromKey(clippedStart) - fromKey(weekStartKey)) / 86400000) + 1;
+      const endColumn = startColumn + Math.round((fromKey(clippedEnd) - fromKey(clippedStart)) / 86400000);
+      const bar = document.createElement('span');
+      bar.className = `calendar-event-bar lane-${lane} ${event.color || 'mint'}`;
+      if (eventStart(event) < weekStartKey) bar.classList.add('continues-before');
+      if (eventEnd(event) > weekEndKey) bar.classList.add('continues-after');
+      bar.style.gridColumn = `${startColumn} / ${endColumn + 1}`;
+      bar.style.gridRow = String(week + 1);
+      bar.textContent = event.title;
+      bar.title = `${event.title} (${formatEventDate(event)})`;
+      bar.setAttribute('aria-hidden', 'true');
+      calendarGrid.append(bar);
+    });
+  }
+}
+
 function renderCalendar() {
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -173,6 +220,8 @@ function renderCalendar() {
     button.type = 'button';
     button.className = 'day-cell';
     button.dataset.date = key;
+    button.style.gridColumn = String((index % 7) + 1);
+    button.style.gridRow = String(Math.floor(index / 7) + 1);
     button.setAttribute('role', 'gridcell');
     button.setAttribute('aria-label', `${formatLongDate(date)}${holiday ? `, ${holiday.name}` : ''}${dayEvents.length ? `, 일정 ${dayEvents.length}개` : ''}`);
     if (date.getMonth() !== month) button.classList.add('is-outside');
@@ -185,14 +234,6 @@ function renderCalendar() {
     const number = document.createElement('span');
     number.className = 'day-number';
     number.textContent = date.getDate();
-    const eventLabels = document.createElement('span');
-    eventLabels.className = 'day-event-labels';
-    dayEvents.slice(0, 2).forEach((event) => {
-      const label = document.createElement('span');
-      label.className = `day-event-label ${event.color}`;
-      label.textContent = event.title;
-      eventLabels.append(label);
-    });
     button.append(number);
     if (holiday) {
       const holidayName = document.createElement('span');
@@ -200,13 +241,13 @@ function renderCalendar() {
       holidayName.textContent = holiday.name;
       button.append(holidayName);
     }
-    button.append(eventLabels);
     button.addEventListener('click', () => {
       if (Date.now() < ignoreClickUntil) return;
       selectDate(date);
     });
     calendarGrid.append(button);
   }
+  renderEventBars(firstVisible);
 }
 
 function renderAgenda() {
@@ -283,6 +324,10 @@ function fitCalendarTitle() {
       currentCalendarTitle.style.fontSize = `${fontSize}px`;
     }
   });
+}
+
+function finishCalendarRestore() {
+  delete document.documentElement.dataset.restoringCalendar;
 }
 
 function updateCalendarHeading() {
@@ -582,7 +627,7 @@ document.addEventListener('keydown', (event) => {
 applyTheme(document.documentElement.dataset.theme || 'light');
 window.addEventListener('resize', fitCalendarTitle);
 render();
-window.sharedCalendar?.init({
+Promise.resolve(window.sharedCalendar?.init({
   onEvents(nextSharedEvents) {
     sharedEvents = nextSharedEvents;
     if (calendarScope === 'shared') {
@@ -606,9 +651,9 @@ window.sharedCalendar?.init({
   onCalendarActivated() {
     setCalendarScope('shared');
   },
-}).catch((error) => {
+})).catch((error) => {
   console.error('공유 캘린더를 시작하지 못했습니다.', error);
-});
+}).finally(finishCalendarRestore);
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
