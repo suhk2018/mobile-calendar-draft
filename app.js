@@ -220,12 +220,24 @@ function renderEventBars(firstVisible) {
       const bar = document.createElement('span');
       bar.className = `calendar-event-bar lane-${lane} ${event.color || 'mint'}`;
       if (!eventIsAllDay(event)) bar.classList.add('is-timed');
+      if (event.authorLabel) bar.classList.add('has-author');
       if (eventIsAllDay(event) && eventStart(event) < weekStartKey) bar.classList.add('continues-before');
       if (eventIsAllDay(event) && eventEnd(event) > weekEndKey) bar.classList.add('continues-after');
       bar.style.gridColumn = `${startColumn} / ${endColumn + 1}`;
       bar.style.gridRow = String(week + 1);
-      bar.textContent = eventIsAllDay(event) ? event.title : `${event.time} ${event.title}`;
-      bar.title = `${event.title} (${formatEventDate(event)})`;
+      const eventText = eventIsAllDay(event) ? event.title : `${event.time} ${event.title}`;
+      if (event.authorLabel) {
+        const author = document.createElement('span');
+        author.className = 'calendar-event-author';
+        author.textContent = event.authorBadge;
+        const label = document.createElement('span');
+        label.className = 'calendar-event-text';
+        label.textContent = eventText;
+        bar.append(author, label);
+      } else {
+        bar.textContent = eventText;
+      }
+      bar.title = `${event.authorLabel ? `${event.authorLabel} · ` : ''}${event.title} (${formatEventDate(event)})`;
       bar.setAttribute('aria-hidden', 'true');
       calendarGrid.append(bar);
     });
@@ -316,7 +328,8 @@ function renderAgenda() {
     item.querySelector('.event-marker').classList.add(event.color);
     item.querySelector('strong').textContent = event.title;
     const timeText = eventIsAllDay(event) ? '종일' : event.time;
-    item.querySelector('.event-copy span').textContent = `${formatEventDate(event)} · ${timeText}`;
+    const authorText = event.authorLabel ? `${event.authorLabel} · ` : '';
+    item.querySelector('.event-copy span').textContent = `${authorText}${formatEventDate(event)} · ${timeText}`;
     const editButton = item.querySelector('.edit-button');
     editButton.addEventListener('click', () => openComposer(event));
     const deleteButton = item.querySelector('.delete-button');
