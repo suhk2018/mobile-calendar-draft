@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=18" />
-    <link rel="icon" href="icon.svg?v=18" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=18" />
-    <link rel="stylesheet" href="styles.css?v=18" />
+    <link rel="manifest" href="manifest.webmanifest?v=19" />
+    <link rel="icon" href="icon.svg?v=19" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=19" />
+    <link rel="stylesheet" href="styles.css?v=19" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -93,7 +93,11 @@
               <input id="eventEndDate" name="endDate" type="date" required />
             </label>
           </div>
-          <label>
+          <label class="all-day-toggle">
+            <span>종일</span>
+            <input id="eventAllDay" name="allDay" type="checkbox" checked />
+          </label>
+          <label id="eventTimeField">
             시간
             <input id="eventTime" name="time" type="time" value="09:00" />
           </label>
@@ -174,6 +178,7 @@
         <div id="coupleSetupView" class="couple-setup-view">
           <form id="createCoupleForm">
             <label>커플 캘린더 이름<input name="name" type="text" maxlength="30" required placeholder="예: 우리의 캘린더" /></label>
+            <label>처음 만난 날<input name="firstMetOn" type="date" required /></label>
             <button class="save-button" type="submit">새 공유 캘린더 만들기</button>
           </form>
           <div class="or-divider"><span>또는</span></div>
@@ -192,12 +197,15 @@
           <strong></strong>
           <span></span>
         </div>
-        <button type="button" class="delete-button" aria-label="일정 삭제">삭제</button>
+        <div class="event-actions">
+          <button type="button" class="edit-button" aria-label="일정 수정">수정</button>
+          <button type="button" class="delete-button" aria-label="일정 삭제">삭제</button>
+        </div>
       </article>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=18"></script>
-    <script src="shared-calendar.js?v=18"></script>
-    <script src="app.js?v=18"></script>
+    <script src="supabase-config.js?v=19"></script>
+    <script src="shared-calendar.js?v=19"></script>
+    <script src="app.js?v=19"></script>
   </body>
 </html>

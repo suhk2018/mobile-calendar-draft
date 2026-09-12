@@ -14,7 +14,23 @@
   const ui = {};
 
   function showError(element, message) { element.textContent = message; element.hidden = !message; }
-  function mapEvent(row) { return { id: row.id, date: row.start_date, startDate: row.start_date, endDate: row.end_date, time: row.event_time?.slice(0, 5) || '', title: row.title, color: row.color, authorId: row.created_by }; }
+  function mapEvent(row) { return { id: row.id, date: row.start_date, startDate: row.start_date, endDate: row.end_date, allDay: !row.event_time, time: row.event_time?.slice(0, 5) || '', title: row.title, color: row.color, authorId: row.created_by }; }
+
+  function fromDateKey(key) {
+    const [year, month, day] = key.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  function formatAnniversary(firstMetOn) {
+    if (!firstMetOn) return '아직 만난 날이 설정되지 않았어요.';
+    const firstDay = fromDateKey(firstMetOn);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const difference = Math.round((today - firstDay) / 86400000);
+    const dDay = difference >= 0 ? `D+${difference + 1}` : `D${difference}`;
+    const date = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }).format(firstDay);
+    return `${dDay} · ${date}부터 함께`;
+  }
 
   async function loadEvents() {
     if (!activeCalendar) return eventHandler([]);
@@ -52,7 +68,7 @@
     calendars = [];
     activeCalendar = null;
     if (!session) return renderAccount();
-    const { data, error } = await client.from('couple_members').select('couple_id, joined_at, couples(id, name, invite_code, created_by)').eq('user_id', session.user.id).order('joined_at');
+    const { data, error } = await client.from('couple_members').select('couple_id, joined_at, couples(id, name, invite_code, created_by, first_met_on)').eq('user_id', session.user.id).order('joined_at');
     if (error) throw error;
     calendars = data.map((item) => item.couples).filter(Boolean);
     const savedId = preferredId || localStorage.getItem('active-shared-calendar-v1');
@@ -72,6 +88,9 @@
       caption.textContent = calendar.id === activeCalendar?.id ? '현재 보고 있는 캘린더' : '함께 쓰는 캘린더';
       const name = document.createElement('strong');
       name.textContent = calendar.name;
+      const anniversary = document.createElement('p');
+      anniversary.className = 'couple-anniversary';
+      anniversary.textContent = formatAnniversary(calendar.first_met_on);
       const openButton = document.createElement('button');
       openButton.type = 'button';
       openButton.className = 'calendar-open-button';
@@ -140,6 +159,45 @@
         });
         actions.append(renameButton);
       }
+      const anniversaryForm = document.createElement('form');
+      anniversaryForm.className = 'anniversary-form';
+      anniversaryForm.hidden = true;
+      const anniversaryInput = document.createElement('input');
+      anniversaryInput.type = 'date';
+      anniversaryInput.required = true;
+      anniversaryInput.value = calendar.first_met_on || '';
+      anniversaryInput.setAttribute('aria-label', '처음 만난 날');
+      const anniversarySaveButton = document.createElement('button');
+      anniversarySaveButton.type = 'submit';
+      anniversarySaveButton.textContent = '저장';
+      const anniversaryCancelButton = document.createElement('button');
+      anniversaryCancelButton.type = 'button';
+      anniversaryCancelButton.textContent = '취소';
+      anniversaryCancelButton.addEventListener('click', () => {
+        anniversaryInput.value = calendar.first_met_on || '';
+        anniversaryForm.hidden = true;
+      });
+      anniversaryForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!anniversaryInput.value || anniversarySaveButton.disabled) return;
+        showError(ui.coupleError, '');
+        anniversarySaveButton.disabled = true;
+        const { error } = await client.rpc('set_couple_anniversary', { target_couple: calendar.id, new_date: anniversaryInput.value });
+        anniversarySaveButton.disabled = false;
+        if (error) return showError(ui.coupleError, error.message);
+        anniversaryForm.hidden = true;
+        await loadCalendars(calendar.id);
+      });
+      anniversaryForm.append(anniversaryInput, anniversarySaveButton, anniversaryCancelButton);
+      const anniversaryButton = document.createElement('button');
+      anniversaryButton.type = 'button';
+      anniversaryButton.className = 'calendar-anniversary-button';
+      anniversaryButton.textContent = calendar.first_met_on ? '만난 날 변경' : '만난 날 설정';
+      anniversaryButton.addEventListener('click', () => {
+        anniversaryForm.hidden = false;
+        anniversaryInput.focus();
+      });
+      actions.append(anniversaryButton);
       actions.append(removeButton);
       const invite = document.createElement('p');
       invite.append('초대 코드 ');
@@ -154,7 +212,7 @@
         setTimeout(() => { inviteButton.textContent = calendar.invite_code; }, 1200);
       });
       invite.append(inviteButton);
-      card.append(caption, name, actions, invite, renameForm);
+      card.append(caption, name, actions, anniversary, invite, renameForm, anniversaryForm);
       ui.coupleList.append(card);
     });
   }
@@ -221,9 +279,13 @@
       const form = event.currentTarget;
       submitCalendarForm(form, async () => {
         showError(ui.coupleError, '');
-        const name = String(new FormData(form).get('name')).trim();
+        const values = new FormData(form);
+        const name = String(values.get('name')).trim();
+        const firstMetOn = String(values.get('firstMetOn'));
         const { data, error } = await client.rpc('create_couple', { couple_name: name });
         if (error) return showError(ui.coupleError, error.message);
+        const { error: anniversaryError } = await client.rpc('set_couple_anniversary', { target_couple: data, new_date: firstMetOn });
+        if (anniversaryError) return showError(ui.coupleError, anniversaryError.message);
         form.reset();
         await loadCalendars(data);
         calendarActivatedHandler(data);
@@ -253,7 +315,11 @@
 
   async function upsertEvent(event) {
     if (!client || !session || !activeCalendar) return false;
-    const { error } = await client.from('events').upsert({ id: event.id, couple_id: activeCalendar.id, created_by: session.user.id, title: event.title, start_date: event.startDate, end_date: event.endDate, event_time: event.time || null, color: event.color });
+    const values = { title: event.title, start_date: event.startDate, end_date: event.endDate, event_time: event.allDay ? null : event.time, color: event.color };
+    const query = event.authorId
+      ? client.from('events').update(values).eq('id', event.id).eq('couple_id', activeCalendar.id)
+      : client.from('events').insert({ ...values, id: event.id, couple_id: activeCalendar.id, created_by: session.user.id });
+    const { error } = await query;
     if (error) throw error;
     await loadEvents();
     return true;

@@ -6,6 +6,7 @@ create table public.couples (
   name text not null check (char_length(name) between 1 and 30),
   invite_code text not null unique default upper(substr(encode(gen_random_bytes(6), 'hex'), 1, 8)),
   created_by uuid not null references auth.users(id) on delete cascade,
+  first_met_on date,
   created_at timestamptz not null default now()
 );
 
@@ -100,16 +101,32 @@ begin
 end;
 $$;
 
+create function public.set_couple_anniversary(target_couple uuid, new_date date)
+returns date language plpgsql security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then raise exception '로그인이 필요합니다'; end if;
+  if new_date is null then raise exception '처음 만난 날을 입력해 주세요'; end if;
+  update public.couples set first_met_on = new_date
+  where id = target_couple
+    and exists(select 1 from public.couple_members where couple_id = target_couple and user_id = auth.uid());
+  if not found then raise exception '참여 중인 캘린더만 변경할 수 있습니다'; end if;
+  return new_date;
+end;
+$$;
+
 revoke all on function public.create_couple(text) from public;
 revoke all on function public.join_couple(text) from public;
 revoke all on function public.is_couple_member(uuid) from public;
 revoke all on function public.delete_or_leave_couple(uuid) from public;
 revoke all on function public.rename_couple(uuid, text) from public;
+revoke all on function public.set_couple_anniversary(uuid, date) from public;
 grant execute on function public.create_couple(text) to authenticated;
 grant execute on function public.join_couple(text) to authenticated;
 grant execute on function public.is_couple_member(uuid) to authenticated;
 grant execute on function public.delete_or_leave_couple(uuid) to authenticated;
 grant execute on function public.rename_couple(uuid, text) to authenticated;
+grant execute on function public.set_couple_anniversary(uuid, date) to authenticated;
 
 alter publication supabase_realtime add table public.events;
 alter publication supabase_realtime add table public.couples;

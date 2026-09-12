@@ -10,6 +10,11 @@ const eventForm = document.querySelector('#eventForm');
 const eventStartDate = document.querySelector('#eventStartDate');
 const eventEndDate = document.querySelector('#eventEndDate');
 const eventTitle = document.querySelector('#eventTitle');
+const eventAllDay = document.querySelector('#eventAllDay');
+const eventTime = document.querySelector('#eventTime');
+const eventTimeField = document.querySelector('#eventTimeField');
+const composerTitle = document.querySelector('#composerTitle');
+const eventSaveButton = eventForm.querySelector('.save-button');
 const formError = document.querySelector('#formError');
 const composer = document.querySelector('.composer');
 const composerBackdrop = document.querySelector('#composerBackdrop');
@@ -46,6 +51,7 @@ let sharedEvents = [];
 let events = personalEvents;
 let sharedCalendars = [];
 let activeSharedCalendarId = null;
+let editingEvent = null;
 const holidaysByYear = new Map();
 
 function startOfDay(date) {
@@ -71,6 +77,10 @@ function eventStart(event) {
 
 function eventEnd(event) {
   return event.endDate || event.startDate || event.date;
+}
+
+function eventIsAllDay(event) {
+  return typeof event.allDay === 'boolean' ? event.allDay : !event.time;
 }
 
 function eventCoversDate(event, key) {
@@ -156,6 +166,15 @@ function formatEventDate(event) {
   return `${formatShortDate(fromKey(start))} – ${formatShortDate(fromKey(end))}`;
 }
 
+function formatAnniversaryDetail(firstMetOn) {
+  if (!firstMetOn) return '만난 날을 설정해 주세요';
+  const firstDay = fromKey(firstMetOn);
+  const dayDifference = Math.round((today - firstDay) / 86400000);
+  const dDay = dayDifference >= 0 ? `D+${dayDifference + 1}` : `D${dayDifference}`;
+  const date = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric' }).format(firstDay);
+  return `${dDay} · ${date}`;
+}
+
 function renderEventBars(firstVisible) {
   const previousLaneByEvent = new Map();
 
@@ -164,12 +183,17 @@ function renderEventBars(firstVisible) {
     const weekEndKey = toKey(addDays(firstVisible, week * 7 + 6));
     const laneEnds = [null, null];
     const weekEvents = events
-      .filter((event) => eventOverlapsRange(event, weekStartKey, weekEndKey))
-      .map((event) => ({
-        event,
-        clippedStart: eventStart(event) < weekStartKey ? weekStartKey : eventStart(event),
-        clippedEnd: eventEnd(event) > weekEndKey ? weekEndKey : eventEnd(event),
-      }))
+      .filter((event) => eventIsAllDay(event)
+        ? eventOverlapsRange(event, weekStartKey, weekEndKey)
+        : eventStart(event) >= weekStartKey && eventStart(event) <= weekEndKey)
+      .map((event) => {
+        const timed = !eventIsAllDay(event);
+        return {
+          event,
+          clippedStart: timed || eventStart(event) >= weekStartKey ? eventStart(event) : weekStartKey,
+          clippedEnd: timed ? eventStart(event) : (eventEnd(event) > weekEndKey ? weekEndKey : eventEnd(event)),
+        };
+      })
       .sort((a, b) => a.clippedStart.localeCompare(b.clippedStart)
         || b.clippedEnd.localeCompare(a.clippedEnd)
         || a.event.title.localeCompare(b.event.title, 'ko'));
@@ -187,11 +211,12 @@ function renderEventBars(firstVisible) {
       const endColumn = startColumn + Math.round((fromKey(clippedEnd) - fromKey(clippedStart)) / 86400000);
       const bar = document.createElement('span');
       bar.className = `calendar-event-bar lane-${lane} ${event.color || 'mint'}`;
-      if (eventStart(event) < weekStartKey) bar.classList.add('continues-before');
-      if (eventEnd(event) > weekEndKey) bar.classList.add('continues-after');
+      if (!eventIsAllDay(event)) bar.classList.add('is-timed');
+      if (eventIsAllDay(event) && eventStart(event) < weekStartKey) bar.classList.add('continues-before');
+      if (eventIsAllDay(event) && eventEnd(event) > weekEndKey) bar.classList.add('continues-after');
       bar.style.gridColumn = `${startColumn} / ${endColumn + 1}`;
       bar.style.gridRow = String(week + 1);
-      bar.textContent = event.title;
+      bar.textContent = eventIsAllDay(event) ? event.title : `${event.time} ${event.title}`;
       bar.title = `${event.title} (${formatEventDate(event)})`;
       bar.setAttribute('aria-hidden', 'true');
       calendarGrid.append(bar);
@@ -273,8 +298,10 @@ function renderAgenda() {
     const item = eventTemplate.content.firstElementChild.cloneNode(true);
     item.querySelector('.event-marker').classList.add(event.color);
     item.querySelector('strong').textContent = event.title;
-    const timeText = event.time || '시간 미정';
+    const timeText = eventIsAllDay(event) ? '종일' : event.time;
     item.querySelector('.event-copy span').textContent = `${formatEventDate(event)} · ${timeText}`;
+    const editButton = item.querySelector('.edit-button');
+    editButton.addEventListener('click', () => openComposer(event));
     const deleteButton = item.querySelector('.delete-button');
     deleteButton.addEventListener('click', async () => {
       try {
@@ -368,7 +395,7 @@ function renderSharedCalendarTabs() {
     const copy = document.createElement('span');
     copy.textContent = calendar.name;
     const detail = document.createElement('small');
-    detail.textContent = '함께 쓰는 일정';
+    detail.textContent = formatAnniversaryDetail(calendar.first_met_on);
     copy.append(detail);
     button.append(icon, copy);
     button.setAttribute('aria-pressed', String(calendar.id === activeSharedCalendarId && calendarScope === 'shared'));
@@ -409,10 +436,25 @@ function changeMonth(offset) {
   animateCalendar(offset);
 }
 
-function openComposer() {
-  eventStartDate.value = toKey(selectedStartDate);
-  eventEndDate.value = toKey(selectedEndDate);
+function updateAllDayControl() {
+  eventTime.disabled = eventAllDay.checked;
+  eventTime.required = !eventAllDay.checked;
+  eventTimeField.classList.toggle('is-disabled', eventAllDay.checked);
+}
+
+function openComposer(eventToEdit = null) {
+  editingEvent = eventToEdit;
+  eventForm.reset();
+  eventTitle.value = eventToEdit?.title || '';
+  eventStartDate.value = eventToEdit ? eventStart(eventToEdit) : toKey(selectedStartDate);
+  eventEndDate.value = eventToEdit ? eventEnd(eventToEdit) : toKey(selectedEndDate);
   eventEndDate.min = eventStartDate.value;
+  eventAllDay.checked = eventToEdit ? eventIsAllDay(eventToEdit) : true;
+  eventTime.value = eventToEdit?.time || '09:00';
+  eventForm.elements.color.value = eventToEdit?.color || 'mint';
+  composerTitle.textContent = eventToEdit ? '일정 수정' : '일정 추가';
+  eventSaveButton.textContent = eventToEdit ? '수정 내용 저장' : '일정 저장';
+  updateAllDayControl();
   formError.hidden = true;
   composerBackdrop.hidden = false;
   composer.classList.add('is-open');
@@ -448,9 +490,10 @@ document.querySelector('#todayButton').addEventListener('click', () => {
   render();
 });
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
-addEventButton.addEventListener('click', openComposer);
+addEventButton.addEventListener('click', () => openComposer());
 composerBackdrop.addEventListener('click', closeComposer);
 themeButton.addEventListener('click', toggleTheme);
+eventAllDay.addEventListener('change', updateAllDayControl);
 menuButton.addEventListener('click', openSideMenu);
 closeMenuButton.addEventListener('click', closeSideMenu);
 menuBackdrop.addEventListener('click', closeSideMenu);
@@ -588,20 +631,24 @@ eventForm.addEventListener('submit', async (event) => {
     return;
   }
 
-  const newEvent = {
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  const savedEvent = {
+    id: editingEvent?.id || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     date: startDate,
     startDate,
     endDate,
-    time: String(form.get('time')),
+    allDay: eventAllDay.checked,
+    time: eventAllDay.checked ? '' : eventTime.value,
     title,
     color: String(form.get('color')),
+    authorId: editingEvent?.authorId,
   };
   try {
     if (calendarScope === 'shared') {
-      await window.sharedCalendar.upsertEvent(newEvent);
+      await window.sharedCalendar.upsertEvent(savedEvent);
     } else {
-      events.push(newEvent);
+      const existingIndex = events.findIndex((saved) => saved.id === savedEvent.id);
+      if (existingIndex >= 0) events.splice(existingIndex, 1, savedEvent);
+      else events.push(savedEvent);
       personalEvents = events;
       saveEvents();
     }
@@ -614,8 +661,10 @@ eventForm.addEventListener('submit', async (event) => {
   selectedStartDate = fromKey(startDate);
   selectedEndDate = fromKey(endDate);
   cursor = new Date(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), 1);
+  editingEvent = null;
   eventForm.reset();
   eventForm.elements.color.value = 'mint';
+  updateAllDayControl();
   closeComposer();
   render();
 });
