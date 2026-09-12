@@ -13,6 +13,8 @@ const eventTitle = document.querySelector('#eventTitle');
 const eventAllDay = document.querySelector('#eventAllDay');
 const eventTime = document.querySelector('#eventTime');
 const eventTimeField = document.querySelector('#eventTimeField');
+const eventTimePeriod = document.querySelector('#eventTimePeriod');
+const eventTimeReadable = document.querySelector('#eventTimeReadable');
 const composerTitle = document.querySelector('#composerTitle');
 const eventSaveButton = eventForm.querySelector('.save-button');
 const formError = document.querySelector('#formError');
@@ -84,6 +86,17 @@ function eventEnd(event) {
 
 function eventIsAllDay(event) {
   return typeof event.allDay === 'boolean' ? event.allDay : !event.time;
+}
+
+function compareEventsByDisplay(a, b) {
+  const startDifference = eventStart(a).localeCompare(eventStart(b));
+  if (startDifference) return startDifference;
+  if (eventIsAllDay(a) !== eventIsAllDay(b)) return eventIsAllDay(a) ? -1 : 1;
+  if (!eventIsAllDay(a)) {
+    const timeDifference = (a.time || '99:99').localeCompare(b.time || '99:99');
+    if (timeDifference) return timeDifference;
+  }
+  return eventEnd(b).localeCompare(eventEnd(a)) || a.title.localeCompare(b.title, 'ko');
 }
 
 function eventCoversDate(event, key) {
@@ -190,7 +203,13 @@ function renderEventBars(firstVisible) {
     const weekStartKey = toKey(addDays(firstVisible, week * 7));
     const weekEndKey = toKey(addDays(firstVisible, week * 7 + 6));
     const laneEnds = [null, null];
-    const weekEvents = events
+    const holidayEvents = Array.from({ length: 7 }, (_, day) => {
+      const date = addDays(firstVisible, week * 7 + day);
+      const key = toKey(date);
+      const holiday = getHoliday(key);
+      return holiday ? { id: `holiday-${key}`, startDate: key, endDate: key, allDay: true, time: '', title: holiday.name, color: 'holiday', isHoliday: true } : null;
+    }).filter(Boolean);
+    const weekEvents = [...events, ...holidayEvents]
       .filter((event) => eventIsAllDay(event)
         ? eventOverlapsRange(event, weekStartKey, weekEndKey)
         : eventStart(event) >= weekStartKey && eventStart(event) <= weekEndKey)
@@ -203,6 +222,9 @@ function renderEventBars(firstVisible) {
         };
       })
       .sort((a, b) => a.clippedStart.localeCompare(b.clippedStart)
+        || Number(Boolean(b.event.isHoliday)) - Number(Boolean(a.event.isHoliday))
+        || Number(eventIsAllDay(b.event)) - Number(eventIsAllDay(a.event))
+        || (!eventIsAllDay(a.event) && !eventIsAllDay(b.event) ? (a.event.time || '99:99').localeCompare(b.event.time || '99:99') : 0)
         || b.clippedEnd.localeCompare(a.clippedEnd)
         || a.event.title.localeCompare(b.event.title, 'ko'));
 
@@ -219,6 +241,7 @@ function renderEventBars(firstVisible) {
       const endColumn = startColumn + Math.round((fromKey(clippedEnd) - fromKey(clippedStart)) / 86400000);
       const bar = document.createElement('span');
       bar.className = `calendar-event-bar lane-${lane} ${event.color || 'mint'}`;
+      if (event.isHoliday) bar.classList.add('is-holiday-event');
       if (!eventIsAllDay(event)) bar.classList.add('is-timed');
       if (event.authorLabel) bar.classList.add('has-author');
       if (eventIsAllDay(event) && eventStart(event) < weekStartKey) bar.classList.add('continues-before');
@@ -283,17 +306,19 @@ function renderCalendar() {
     number.className = 'day-number';
     number.textContent = date.getDate();
     button.append(number);
+    const visibleItemCount = dayEvents.length + (holiday ? 1 : 0);
+    if (visibleItemCount > 2) {
+      const overflow = document.createElement('span');
+      overflow.className = 'day-overflow-count';
+      overflow.textContent = `+${visibleItemCount - 2}`;
+      overflow.title = `공휴일을 포함해 이 날짜에 표시할 항목이 ${visibleItemCount}개 있어요`;
+      button.append(overflow);
+    }
     if (key === firstMetKey) {
       const firstMetLabel = document.createElement('span');
       firstMetLabel.className = 'first-met-label';
       firstMetLabel.textContent = '♥ 첫 만남';
       button.append(firstMetLabel);
-    }
-    if (holiday) {
-      const holidayName = document.createElement('span');
-      holidayName.className = 'holiday-name';
-      holidayName.textContent = holiday.name;
-      button.append(holidayName);
     }
     button.addEventListener('click', () => {
       if (Date.now() < ignoreClickUntil) return;
@@ -309,7 +334,7 @@ function renderAgenda() {
   const endKey = toKey(selectedEndDate);
   const selectedEvents = events
     .filter((event) => eventOverlapsRange(event, startKey, endKey))
-    .sort((a, b) => eventStart(a).localeCompare(eventStart(b)) || (a.time || '99:99').localeCompare(b.time || '99:99'));
+    .sort(compareEventsByDisplay);
   selectedDateLabel.textContent = formatSelectedRange();
   agendaTitle.textContent = daysInSelection() > 1 ? '선택한 기간의 일정' : sameDay(selectedStartDate, today) ? '오늘의 일정' : '선택한 날짜의 일정';
   eventCount.textContent = `${selectedEvents.length}개`;
@@ -477,6 +502,19 @@ function updateAllDayControl() {
   eventTime.disabled = eventAllDay.checked;
   eventTime.required = !eventAllDay.checked;
   eventTimeField.classList.toggle('is-disabled', eventAllDay.checked);
+  updateTimeReadable();
+}
+
+function updateTimeReadable() {
+  if (!eventTime.value) {
+    eventTimePeriod.textContent = '시간';
+    eventTimeReadable.textContent = '선택해 주세요';
+    return;
+  }
+  const [hourText = '0', minute = '00'] = eventTime.value.split(':');
+  const hour = Number(hourText);
+  eventTimePeriod.textContent = hour < 12 ? '오전' : '오후';
+  eventTimeReadable.textContent = `${hour % 12 || 12}시 ${minute}분`;
 }
 
 function openComposer(eventToEdit = null) {
@@ -525,6 +563,8 @@ addEventButton.addEventListener('click', () => openComposer());
 composerBackdrop.addEventListener('click', closeComposer);
 themeButton.addEventListener('click', toggleTheme);
 eventAllDay.addEventListener('change', updateAllDayControl);
+eventTime.addEventListener('input', updateTimeReadable);
+eventTime.addEventListener('change', updateTimeReadable);
 menuButton.addEventListener('click', openSideMenu);
 closeMenuButton.addEventListener('click', closeSideMenu);
 menuBackdrop.addEventListener('click', closeSideMenu);

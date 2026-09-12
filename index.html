@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=21" />
-    <link rel="icon" href="icon.svg?v=21" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=21" />
-    <link rel="stylesheet" href="styles.css?v=21" />
+    <link rel="manifest" href="manifest.webmanifest?v=22" />
+    <link rel="icon" href="icon.svg?v=22" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=22" />
+    <link rel="stylesheet" href="styles.css?v=22" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -103,6 +103,10 @@
           <label id="eventTimeField">
             시간
             <input id="eventTime" name="time" type="time" value="09:00" />
+            <span class="time-readable" aria-live="polite">
+              <span id="eventTimePeriod">오전</span>
+              <strong id="eventTimeReadable">9시 00분</strong>
+            </span>
           </label>
           <p class="form-error" id="formError" role="alert" hidden></p>
           <fieldset>
@@ -207,8 +211,8 @@
       </article>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=21"></script>
-    <script src="shared-calendar.js?v=21"></script>
-    <script src="app.js?v=21"></script>
+    <script src="supabase-config.js?v=22"></script>
+    <script src="shared-calendar.js?v=22"></script>
+    <script src="app.js?v=22"></script>
   </body>
 </html>
