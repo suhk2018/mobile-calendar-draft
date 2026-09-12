@@ -25,6 +25,9 @@ const sharedCalendarButton = document.querySelector('#sharedCalendarButton');
 const sharedCalendarTabs = document.querySelector('#sharedCalendarTabs');
 const composerScopeLabel = document.querySelector('#composerScopeLabel');
 const currentCalendarTitle = document.querySelector('#currentCalendarTitle');
+const calendarEyebrow = document.querySelector('#calendarEyebrow');
+const togetherCounter = document.querySelector('#togetherCounter');
+const togetherDayCount = document.querySelector('#togetherDayCount');
 const menuButton = document.querySelector('#menuButton');
 const sideMenu = document.querySelector('#sideMenu');
 const menuBackdrop = document.querySelector('#menuBackdrop');
@@ -166,13 +169,18 @@ function formatEventDate(event) {
   return `${formatShortDate(fromKey(start))} – ${formatShortDate(fromKey(end))}`;
 }
 
+function anniversaryDayLabel(firstMetOn) {
+  if (!firstMetOn) return '';
+  const firstDay = fromKey(firstMetOn);
+  const dayDifference = Math.round((today - firstDay) / 86400000);
+  return dayDifference >= 0 ? `D+${dayDifference + 1}` : `D${dayDifference}`;
+}
+
 function formatAnniversaryDetail(firstMetOn) {
   if (!firstMetOn) return '만난 날을 설정해 주세요';
   const firstDay = fromKey(firstMetOn);
-  const dayDifference = Math.round((today - firstDay) / 86400000);
-  const dDay = dayDifference >= 0 ? `D+${dayDifference + 1}` : `D${dayDifference}`;
   const date = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric' }).format(firstDay);
-  return `${dDay} · ${date}`;
+  return `${anniversaryDayLabel(firstMetOn)} · ${date}`;
 }
 
 function renderEventBars(firstVisible) {
@@ -227,6 +235,8 @@ function renderEventBars(firstVisible) {
 function renderCalendar() {
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
+  const activeCalendar = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId);
+  const firstMetKey = calendarScope === 'shared' ? activeCalendar?.first_met_on : null;
   const selectedStartKey = toKey(selectedStartDate);
   const selectedEndKey = toKey(selectedEndDate);
   monthTitle.textContent = `${year}년 ${month + 1}월`;
@@ -248,10 +258,11 @@ function renderCalendar() {
     button.style.gridColumn = String((index % 7) + 1);
     button.style.gridRow = String(Math.floor(index / 7) + 1);
     button.setAttribute('role', 'gridcell');
-    button.setAttribute('aria-label', `${formatLongDate(date)}${holiday ? `, ${holiday.name}` : ''}${dayEvents.length ? `, 일정 ${dayEvents.length}개` : ''}`);
+    button.setAttribute('aria-label', `${formatLongDate(date)}${key === firstMetKey ? ', 처음 만난 날' : ''}${holiday ? `, ${holiday.name}` : ''}${dayEvents.length ? `, 일정 ${dayEvents.length}개` : ''}`);
     if (date.getMonth() !== month) button.classList.add('is-outside');
     if (sameDay(date, today)) button.classList.add('is-today');
     if (holiday) button.classList.add('is-holiday');
+    if (key === firstMetKey) button.classList.add('is-first-met');
     if (key >= selectedStartKey && key <= selectedEndKey) button.classList.add('is-in-range');
     if (key === selectedStartKey) button.classList.add('is-range-start');
     if (key === selectedEndKey) button.classList.add('is-range-end');
@@ -260,6 +271,12 @@ function renderCalendar() {
     number.className = 'day-number';
     number.textContent = date.getDate();
     button.append(number);
+    if (key === firstMetKey) {
+      const firstMetLabel = document.createElement('span');
+      firstMetLabel.className = 'first-met-label';
+      firstMetLabel.textContent = '♥ 첫 만남';
+      button.append(firstMetLabel);
+    }
     if (holiday) {
       const holidayName = document.createElement('span');
       holidayName.className = 'holiday-name';
@@ -346,7 +363,8 @@ function fitCalendarTitle() {
   currentCalendarTitle.style.removeProperty('font-size');
   requestAnimationFrame(() => {
     let fontSize = Number.parseFloat(getComputedStyle(currentCalendarTitle).fontSize);
-    while (currentCalendarTitle.scrollWidth > currentCalendarTitle.clientWidth && fontSize > 17) {
+    const minimumSize = calendarScope === 'shared' ? 15 : 17;
+    while (currentCalendarTitle.scrollWidth > currentCalendarTitle.clientWidth && fontSize > minimumSize) {
       fontSize -= 1;
       currentCalendarTitle.style.fontSize = `${fontSize}px`;
     }
@@ -358,10 +376,16 @@ function finishCalendarRestore() {
 }
 
 function updateCalendarHeading() {
-  const activeName = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId)?.name;
+  const activeCalendar = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId);
+  const activeName = activeCalendar?.name;
   const title = calendarScope === 'shared' ? (activeName || '공유 캘린더') : '나의 일정';
   currentCalendarTitle.textContent = title;
   currentCalendarTitle.title = title;
+  currentCalendarTitle.classList.toggle('is-shared-title', calendarScope === 'shared');
+  calendarEyebrow.textContent = calendarScope === 'shared' ? 'TOGETHER CALENDAR' : 'MY CALENDAR';
+  const dDay = calendarScope === 'shared' ? anniversaryDayLabel(activeCalendar?.first_met_on) : '';
+  togetherCounter.hidden = !dDay;
+  togetherDayCount.textContent = dDay;
   composerScopeLabel.textContent = calendarScope === 'shared' ? (activeName || 'TOGETHER SCHEDULE') : 'MY SCHEDULE';
   fitCalendarTitle();
 }
@@ -483,12 +507,6 @@ function toggleTheme() {
 
 document.querySelector('#previousMonth').addEventListener('click', () => changeMonth(-1));
 document.querySelector('#nextMonth').addEventListener('click', () => changeMonth(1));
-document.querySelector('#todayButton').addEventListener('click', () => {
-  selectedStartDate = new Date(today);
-  selectedEndDate = new Date(today);
-  cursor = new Date(today.getFullYear(), today.getMonth(), 1);
-  render();
-});
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
 addEventButton.addEventListener('click', () => openComposer());
 composerBackdrop.addEventListener('click', closeComposer);

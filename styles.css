@@ -83,11 +83,20 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .brand-group { min-width: 0; flex: 1; gap: 12px; justify-content: flex-start; }
 .brand-group > div { min-width: 0; flex: 1; }
 .brand-group h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand-group h1.is-shared-title { font-size: clamp(1.15rem, 3.8vw, 1.45rem); letter-spacing: -.045em; }
 .top-actions { flex: 0 0 auto; gap: 8px; }
 .eyebrow { margin: 0 0 5px; color: var(--text-tertiary); font-size: 0.69rem; font-weight: 700; letter-spacing: 0.12em; }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-size: clamp(1.7rem, 4vw, 2.15rem); font-weight: 700; letter-spacing: -0.055em; }
 h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.035em; }
+
+.together-counter { display: grid; min-width: 76px; min-height: 50px; padding: 7px 12px; place-content: center; border-radius: 16px; background: linear-gradient(145deg, #fff0f4, #fff7f3); box-shadow: var(--shadow); text-align: center; }
+.together-counter[hidden] { display: none; }
+.together-counter small { color: #b25a70; font-size: .58rem; font-weight: 700; line-height: 1; }
+.together-counter strong { margin-top: 3px; color: #e64d73; font-size: 1rem; line-height: 1; }
+:root[data-theme="dark"] .together-counter { background: linear-gradient(145deg, #3b222c, #35261f); }
+:root[data-theme="dark"] .together-counter small { color: #e7a2b3; }
+:root[data-theme="dark"] .together-counter strong { color: #ff87a5; }
 
 .icon-button, .text-button, .menu-button, .nav-button, .close-composer, .delete-button {
   border: 0;
@@ -164,6 +173,13 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .day-cell.is-range-start.is-range-end { border-radius: 12px; }
 .day-cell.is-range-start .day-number, .day-cell.is-range-end .day-number { background: var(--primary); color: #fff; box-shadow: none; }
 .day-cell.is-outside { color: var(--text-tertiary); opacity: .55; }
+.day-cell.is-first-met { background: linear-gradient(145deg, rgba(255, 112, 145, .16), rgba(255, 164, 116, .12)); box-shadow: inset 0 0 0 1.5px rgba(236, 86, 121, .28), 0 5px 14px rgba(236, 86, 121, .1); }
+.day-cell.is-first-met:hover, .day-cell.is-first-met:focus-visible { background: linear-gradient(145deg, rgba(255, 112, 145, .22), rgba(255, 164, 116, .17)); }
+.day-cell.is-first-met .day-number { background: linear-gradient(145deg, #f25f83, #f58a64); color: #fff; box-shadow: 0 4px 12px rgba(226, 75, 112, .28); }
+.day-cell.is-first-met.is-outside { opacity: .82; }
+.first-met-label { position: relative; z-index: 3; overflow: hidden; color: #dc456b; font-size: .54rem; font-weight: 800; line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-theme="dark"] .day-cell.is-first-met { background: linear-gradient(145deg, rgba(236, 86, 121, .2), rgba(244, 133, 93, .13)); box-shadow: inset 0 0 0 1.5px rgba(255, 130, 158, .34); }
+:root[data-theme="dark"] .first-met-label { color: #ff8da8; }
 .calendar-event-bar {
   --event-color: var(--primary);
   position: relative;
@@ -325,6 +341,9 @@ legend { margin-bottom: 8px; }
 @media (max-width: 480px) {
   .app-shell { padding: max(22px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(92px, calc(70px + env(safe-area-inset-bottom))) max(14px, env(safe-area-inset-left)); }
   .topbar { margin-bottom: 16px; padding: 0 2px; }
+  .brand-group { gap: 9px; }
+  .brand-group h1.is-shared-title { font-size: 1.08rem; }
+  .together-counter { min-width: 68px; min-height: 46px; padding-inline: 9px; border-radius: 15px; }
   .account-button { max-width: 76px; padding: 0 10px; }
   .calendar-panel { padding: 17px 7px 11px; border-radius: 22px; }
   .month-controls { padding: 0 3px 9px; }
