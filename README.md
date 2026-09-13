@@ -28,6 +28,8 @@
 - 왼쪽 목록에서 여러 공유 캘린더 생성·참여·전환
 - 공유 캘린더별 처음 만난 날을 달력에서 특별 표시
 - 상단과 캘린더 목록에서 매일 자동 갱신되는 D-day 확인
+- 상단 D-day를 눌러 다음 100일 단위·1년 단위 기념일 날짜 확인
+- 공유 캘린더에서 각자 자신의 생일을 저장하고 다가오는 생일과 달력 표시 확인
 - 공유 캘린더 생성·참여 직후 해당 캘린더로 자동 전환
 - 화면 위에서 현재 선택한 캘린더 이름 확인
 - 새로고침하거나 다시 열어도 마지막으로 선택한 캘린더 유지
@@ -71,6 +73,7 @@ supabase-multi-calendar-migration.sql  기존 DB의 다중 캘린더 마이그�
 supabase-delete-calendar-migration.sql 공유 캘린더 삭제/나가기 마이그레이션
 supabase-rename-calendar-migration.sql 공유 캘린더 이름 변경 마이그레이션
 supabase-anniversary-migration.sql 처음 만난 날과 D-day 마이그레이션
+supabase-birthday-migration.sql 공유 캘린더 구성원의 생일 마이그레이션
 ```
 
 별도의 빌드 과정 없이 정적 파일을 GitHub Pages로 배포합니다. Supabase가 연결되지 않은 동안에는 일정이 브라우저의 `localStorage`에 저장됩니다.
@@ -84,6 +87,6 @@ supabase-anniversary-migration.sql 처음 만난 날과 D-day 마이그레이션
 5. 변경 내용을 GitHub에 푸시한 뒤 각자 회원가입합니다.
 6. 한 명이 공유 캘린더를 만들고, 표시된 초대 코드를 상대방에게 전달합니다.
 
-기존 Supabase 프로젝트를 사용 중이라면 SQL Editor에서 `supabase-multi-calendar-migration.sql`, `supabase-delete-calendar-migration.sql`, `supabase-rename-calendar-migration.sql`, `supabase-anniversary-migration.sql`을 한 번씩 실행해야 다중 공유 캘린더, 추가 색상, 삭제·나가기, 이름 변경, D-day 기능을 사용할 수 있습니다.
+기존 Supabase 프로젝트를 사용 중이라면 SQL Editor에서 `supabase-multi-calendar-migration.sql`, `supabase-delete-calendar-migration.sql`, `supabase-rename-calendar-migration.sql`, `supabase-anniversary-migration.sql`, `supabase-birthday-migration.sql`을 한 번씩 실행해야 다중 공유 캘린더, 추가 색상, 삭제·나가기, 이름 변경, D-day와 생일 기능을 사용할 수 있습니다.
 
 공개 저장소에는 `service_role` 키를 절대로 넣지 마세요. 브라우저에는 anon public key만 사용하고, 데이터 접근은 `supabase-schema.sql`의 RLS 정책으로 제한합니다.

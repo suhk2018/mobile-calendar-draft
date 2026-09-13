@@ -13,6 +13,7 @@ create table public.couples (
 create table public.couple_members (
   couple_id uuid not null references public.couples(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
+  birthday date,
   joined_at timestamptz not null default now(),
   primary key (couple_id, user_id)
 );
@@ -115,18 +116,34 @@ begin
 end;
 $$;
 
+create function public.set_member_birthday(target_couple uuid, new_birthday date)
+returns date language plpgsql security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then raise exception '로그인이 필요합니다'; end if;
+  if new_birthday is null or new_birthday > current_date then raise exception '올바른 생일을 입력해 주세요'; end if;
+  update public.couple_members set birthday = new_birthday
+  where couple_id = target_couple and user_id = auth.uid();
+  if not found then raise exception '참여 중인 캘린더만 변경할 수 있습니다'; end if;
+  return new_birthday;
+end;
+$$;
+
 revoke all on function public.create_couple(text) from public;
 revoke all on function public.join_couple(text) from public;
 revoke all on function public.is_couple_member(uuid) from public;
 revoke all on function public.delete_or_leave_couple(uuid) from public;
 revoke all on function public.rename_couple(uuid, text) from public;
 revoke all on function public.set_couple_anniversary(uuid, date) from public;
+revoke all on function public.set_member_birthday(uuid, date) from public;
 grant execute on function public.create_couple(text) to authenticated;
 grant execute on function public.join_couple(text) to authenticated;
 grant execute on function public.is_couple_member(uuid) to authenticated;
 grant execute on function public.delete_or_leave_couple(uuid) to authenticated;
 grant execute on function public.rename_couple(uuid, text) to authenticated;
 grant execute on function public.set_couple_anniversary(uuid, date) to authenticated;
+grant execute on function public.set_member_birthday(uuid, date) to authenticated;
 
 alter publication supabase_realtime add table public.events;
 alter publication supabase_realtime add table public.couples;
+alter publication supabase_realtime add table public.couple_members;

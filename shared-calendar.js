@@ -55,6 +55,10 @@
         renderAccount();
         calendarsHandler(calendars, activeCalendar?.id || null);
       })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'couple_members' }, async (payload) => {
+        if (!calendars.some((calendar) => calendar.id === payload.new.couple_id)) return;
+        await loadCalendars(activeCalendar?.id);
+      })
       .subscribe();
   }
 
@@ -74,6 +78,21 @@
     const { data, error } = await client.from('couple_members').select('couple_id, joined_at, couples(id, name, invite_code, created_by, first_met_on)').eq('user_id', session.user.id).order('joined_at');
     if (error) throw error;
     calendars = data.map((item) => item.couples).filter(Boolean);
+    if (calendars.length) {
+      const calendarIds = calendars.map((calendar) => calendar.id);
+      const { data: memberRows, error: memberError } = await client.from('couple_members').select('couple_id, user_id, birthday').in('couple_id', calendarIds);
+      if (memberError) throw memberError;
+      calendars = calendars.map((calendar) => ({
+        ...calendar,
+        members: memberRows
+          .filter((member) => member.couple_id === calendar.id)
+          .map((member) => ({
+            userId: member.user_id,
+            birthday: member.birthday,
+            isMe: member.user_id === session.user.id,
+          })),
+      }));
+    }
     const savedId = preferredId || localStorage.getItem('active-shared-calendar-v1');
     activeCalendar = calendars.find((calendar) => calendar.id === savedId) || calendars[0] || null;
     renderAccount();
@@ -336,5 +355,13 @@
     return true;
   }
 
-  window.sharedCalendar = { init, upsertEvent, deleteEvent, selectCalendar, isConnected: () => Boolean(session && activeCalendar), openSettings: openSheet };
+  async function setBirthday(birthday) {
+    if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
+    const { error } = await client.rpc('set_member_birthday', { target_couple: activeCalendar.id, new_birthday: birthday });
+    if (error) throw error;
+    await loadCalendars(activeCalendar.id);
+    return true;
+  }
+
+  window.sharedCalendar = { init, upsertEvent, deleteEvent, setBirthday, selectCalendar, isConnected: () => Boolean(session && activeCalendar), openSettings: openSheet };
 })();

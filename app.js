@@ -35,6 +35,16 @@ const sideMenu = document.querySelector('#sideMenu');
 const menuBackdrop = document.querySelector('#menuBackdrop');
 const closeMenuButton = document.querySelector('#closeMenu');
 const accountButton = document.querySelector('#accountButton');
+const anniversaryBackdrop = document.querySelector('#anniversaryBackdrop');
+const anniversarySheet = document.querySelector('#anniversarySheet');
+const closeAnniversaryButton = document.querySelector('#closeAnniversary');
+const anniversaryStartDate = document.querySelector('#anniversaryStartDate');
+const anniversaryCurrentDay = document.querySelector('#anniversaryCurrentDay');
+const milestoneList = document.querySelector('#milestoneList');
+const birthdayList = document.querySelector('#birthdayList');
+const birthdayForm = document.querySelector('#birthdayForm');
+const birthdayInput = document.querySelector('#birthdayInput');
+const birthdayError = document.querySelector('#birthdayError');
 
 const storageKey = 'green-calendar-events-v1';
 const themeStorageKey = 'calendar-theme-v1';
@@ -196,7 +206,152 @@ function formatAnniversaryDetail(firstMetOn) {
   return `${anniversaryDayLabel(firstMetOn)} · ${date}`;
 }
 
-function renderEventBars(firstVisible) {
+function activeSharedCalendar() {
+  return sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId);
+}
+
+function recurringDateForYear(dateKey, year) {
+  const [, month, day] = dateKey.split('-').map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return new Date(year, month - 1, Math.min(day, lastDay));
+}
+
+function birthdayEventsForRange(startKey, endKey) {
+  if (calendarScope !== 'shared') return [];
+  const calendar = activeSharedCalendar();
+  if (!calendar?.members?.length) return [];
+  const startYear = fromKey(startKey).getFullYear();
+  const endYear = fromKey(endKey).getFullYear();
+  const birthdayEvents = [];
+  calendar.members.filter((member) => member.birthday).forEach((member) => {
+    for (let year = startYear; year <= endYear; year += 1) {
+      const key = toKey(recurringDateForYear(member.birthday, year));
+      if (key < startKey || key > endKey) continue;
+      birthdayEvents.push({
+        id: `birthday-${member.userId}-${year}`,
+        startDate: key,
+        endDate: key,
+        allDay: true,
+        time: '',
+        title: member.isMe ? '내 생일' : '상대방 생일',
+        color: 'birthday',
+        isBirthday: true,
+      });
+    }
+  });
+  return birthdayEvents;
+}
+
+function formatFullDate(date) {
+  return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' }).format(date);
+}
+
+function remainingDayLabel(date) {
+  const difference = Math.round((startOfDay(date) - today) / 86400000);
+  if (difference === 0) return '오늘';
+  return difference > 0 ? `${difference}일 남음` : `${Math.abs(difference)}일 지남`;
+}
+
+function upcomingMilestones(firstMetOn) {
+  if (!firstMetOn) return [];
+  const firstDay = fromKey(firstMetOn);
+  const currentDay = Math.max(1, Math.round((today - firstDay) / 86400000) + 1);
+  const firstHundred = Math.max(100, Math.ceil(currentDay / 100) * 100);
+  const hundreds = Array.from({ length: 10 }, (_, index) => {
+    const day = firstHundred + index * 100;
+    return { type: 'hundred', label: `${day}일`, date: addDays(firstDay, day - 1) };
+  });
+  const years = [];
+  let yearNumber = 1;
+  while (years.length < 10) {
+    const anniversaryDate = recurringDateForYear(firstMetOn, firstDay.getFullYear() + yearNumber);
+    if (anniversaryDate >= today) years.push({ type: 'year', label: `${yearNumber}주년`, date: anniversaryDate });
+    yearNumber += 1;
+  }
+  return [...hundreds, ...years].sort((a, b) => a.date - b.date || a.label.localeCompare(b.label, 'ko'));
+}
+
+function renderAnniversarySheet() {
+  const calendar = activeSharedCalendar();
+  if (!calendar) return;
+  anniversaryStartDate.textContent = calendar.first_met_on ? `${formatFullDate(fromKey(calendar.first_met_on))}부터` : '처음 만난 날을 설정해 주세요';
+  anniversaryCurrentDay.textContent = anniversaryDayLabel(calendar.first_met_on) || 'D-day';
+  milestoneList.replaceChildren();
+  upcomingMilestones(calendar.first_met_on).forEach((milestone) => {
+    const item = document.createElement('article');
+    item.className = `milestone-item ${milestone.type === 'year' ? 'is-year' : ''}`;
+    const icon = document.createElement('span');
+    icon.className = 'milestone-icon';
+    icon.textContent = milestone.type === 'year' ? '♥' : '✦';
+    const copy = document.createElement('div');
+    copy.className = 'milestone-copy';
+    const title = document.createElement('strong');
+    title.textContent = milestone.label;
+    const remaining = document.createElement('span');
+    remaining.textContent = remainingDayLabel(milestone.date);
+    copy.append(title, remaining);
+    const date = document.createElement('time');
+    date.className = 'milestone-date';
+    date.dateTime = toKey(milestone.date);
+    date.textContent = formatFullDate(milestone.date);
+    item.append(icon, copy, date);
+    milestoneList.append(item);
+  });
+
+  birthdayList.replaceChildren();
+  const membersWithBirthday = (calendar.members || []).filter((member) => member.birthday);
+  if (!membersWithBirthday.length) {
+    const empty = document.createElement('p');
+    empty.className = 'birthday-empty';
+    empty.textContent = '아직 저장된 생일이 없어요. 각자 자신의 휴대폰에서 생일을 저장해 주세요.';
+    birthdayList.append(empty);
+  } else {
+    membersWithBirthday.forEach((member) => {
+      let nextBirthday = recurringDateForYear(member.birthday, today.getFullYear());
+      if (nextBirthday < today) nextBirthday = recurringDateForYear(member.birthday, today.getFullYear() + 1);
+      const item = document.createElement('article');
+      item.className = 'birthday-item';
+      const icon = document.createElement('span');
+      icon.className = 'milestone-icon';
+      icon.textContent = '🎂';
+      const copy = document.createElement('div');
+      copy.className = 'milestone-copy';
+      const title = document.createElement('strong');
+      title.textContent = member.isMe ? '내 생일' : '상대방 생일';
+      const remaining = document.createElement('span');
+      remaining.textContent = remainingDayLabel(nextBirthday);
+      copy.append(title, remaining);
+      const date = document.createElement('time');
+      date.className = 'milestone-date';
+      date.dateTime = toKey(nextBirthday);
+      date.textContent = formatFullDate(nextBirthday);
+      item.append(icon, copy, date);
+      birthdayList.append(item);
+    });
+  }
+  const me = (calendar.members || []).find((member) => member.isMe);
+  birthdayInput.value = me?.birthday || '';
+  birthdayInput.max = toKey(today);
+  birthdayError.hidden = true;
+  birthdayError.textContent = '';
+}
+
+function openAnniversarySheet() {
+  if (calendarScope !== 'shared' || !activeSharedCalendar()) return;
+  renderAnniversarySheet();
+  anniversaryBackdrop.hidden = false;
+  anniversarySheet.classList.add('is-open');
+  anniversarySheet.focus();
+}
+
+function closeAnniversarySheet() {
+  anniversarySheet.classList.remove('is-open');
+  setTimeout(() => {
+    if (!anniversarySheet.classList.contains('is-open')) anniversaryBackdrop.hidden = true;
+  }, 220);
+}
+
+function renderEventBars(firstVisible, birthdayEvents = []) {
   const previousLaneByEvent = new Map();
 
   for (let week = 0; week < 6; week += 1) {
@@ -209,7 +364,7 @@ function renderEventBars(firstVisible) {
       const holiday = getHoliday(key);
       return holiday ? { id: `holiday-${key}`, startDate: key, endDate: key, allDay: true, time: '', title: holiday.name, color: 'holiday', isHoliday: true } : null;
     }).filter(Boolean);
-    const weekEvents = [...events, ...holidayEvents]
+    const weekEvents = [...events, ...birthdayEvents, ...holidayEvents]
       .filter((event) => eventIsAllDay(event)
         ? eventOverlapsRange(event, weekStartKey, weekEndKey)
         : eventStart(event) >= weekStartKey && eventStart(event) <= weekEndKey)
@@ -223,6 +378,7 @@ function renderEventBars(firstVisible) {
       })
       .sort((a, b) => a.clippedStart.localeCompare(b.clippedStart)
         || Number(Boolean(b.event.isHoliday)) - Number(Boolean(a.event.isHoliday))
+        || Number(Boolean(b.event.isBirthday)) - Number(Boolean(a.event.isBirthday))
         || Number(eventIsAllDay(b.event)) - Number(eventIsAllDay(a.event))
         || (!eventIsAllDay(a.event) && !eventIsAllDay(b.event) ? (a.event.time || '99:99').localeCompare(b.event.time || '99:99') : 0)
         || b.clippedEnd.localeCompare(a.clippedEnd)
@@ -281,10 +437,12 @@ function renderCalendar() {
   calendarGrid.replaceChildren();
 
   const firstVisible = new Date(year, month, 1 - new Date(year, month, 1).getDay());
+  const lastVisible = addDays(firstVisible, 41);
+  const birthdayEvents = birthdayEventsForRange(toKey(firstVisible), toKey(lastVisible));
   for (let index = 0; index < 42; index += 1) {
     const date = new Date(firstVisible.getFullYear(), firstVisible.getMonth(), firstVisible.getDate() + index);
     const key = toKey(date);
-    const dayEvents = events.filter((event) => eventCoversDate(event, key));
+    const dayEvents = [...events, ...birthdayEvents].filter((event) => eventCoversDate(event, key));
     const holiday = getHoliday(key);
     const button = document.createElement('button');
     button.type = 'button';
@@ -326,13 +484,13 @@ function renderCalendar() {
     });
     calendarGrid.append(button);
   }
-  renderEventBars(firstVisible);
+  renderEventBars(firstVisible, birthdayEvents);
 }
 
 function renderAgenda() {
   const startKey = toKey(selectedStartDate);
   const endKey = toKey(selectedEndDate);
-  const selectedEvents = events
+  const selectedEvents = [...events, ...birthdayEventsForRange(startKey, endKey)]
     .filter((event) => eventOverlapsRange(event, startKey, endKey))
     .sort(compareEventsByDisplay);
   selectedDateLabel.textContent = formatSelectedRange();
@@ -356,8 +514,15 @@ function renderAgenda() {
     const authorText = event.authorLabel ? `${event.authorLabel} · ` : '';
     item.querySelector('.event-copy span').textContent = `${authorText}${formatEventDate(event)} · ${timeText}`;
     const editButton = item.querySelector('.edit-button');
-    editButton.addEventListener('click', () => openComposer(event));
     const deleteButton = item.querySelector('.delete-button');
+    if (event.isBirthday) {
+      editButton.hidden = true;
+      deleteButton.hidden = true;
+      item.querySelector('.event-marker').classList.add('pink');
+      eventList.append(item);
+      return;
+    }
+    editButton.addEventListener('click', () => openComposer(event));
     deleteButton.addEventListener('click', async () => {
       try {
         if (calendarScope === 'shared') {
@@ -414,7 +579,7 @@ function finishCalendarRestore() {
 }
 
 function updateCalendarHeading() {
-  const activeCalendar = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId);
+  const activeCalendar = activeSharedCalendar();
   const activeName = activeCalendar?.name;
   const title = calendarScope === 'shared' ? (activeName || '공유 캘린더') : '나의 일정';
   currentCalendarTitle.textContent = title;
@@ -434,6 +599,7 @@ function setCalendarScope(scope) {
     return;
   }
   calendarScope = scope;
+  if (scope !== 'shared' && anniversarySheet.classList.contains('is-open')) closeAnniversarySheet();
   preferredCalendarScope = scope;
   localStorage.setItem(calendarScopeStorageKey, scope);
   events = scope === 'shared' ? sharedEvents : personalEvents;
@@ -571,6 +737,29 @@ menuBackdrop.addEventListener('click', closeSideMenu);
 accountButton.addEventListener('click', closeSideMenu);
 personalCalendarButton.addEventListener('click', () => { setCalendarScope('personal'); closeSideMenu(); });
 sharedCalendarButton.addEventListener('click', () => { closeSideMenu(); window.sharedCalendar?.openSettings(); });
+togetherCounter.addEventListener('click', openAnniversarySheet);
+closeAnniversaryButton.addEventListener('click', closeAnniversarySheet);
+anniversaryBackdrop.addEventListener('click', closeAnniversarySheet);
+birthdayForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!birthdayInput.value) return;
+  const saveButton = birthdayForm.querySelector('button[type="submit"]');
+  birthdayError.hidden = true;
+  saveButton.disabled = true;
+  saveButton.textContent = '저장 중';
+  try {
+    await window.sharedCalendar.setBirthday(birthdayInput.value);
+    saveButton.textContent = '저장됨';
+    setTimeout(() => { saveButton.textContent = '저장'; }, 1100);
+  } catch (error) {
+    birthdayError.textContent = error.message || '생일을 저장하지 못했어요.';
+    birthdayError.hidden = false;
+    saveButton.textContent = '저장';
+    console.error(error);
+  } finally {
+    saveButton.disabled = false;
+  }
+});
 
 function beginCalendarGesture(x, y, target) {
   clearTimeout(longPressTimer);
@@ -742,6 +931,7 @@ eventForm.addEventListener('submit', async (event) => {
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && composer.classList.contains('is-open')) closeComposer();
+  if (event.key === 'Escape' && anniversarySheet.classList.contains('is-open')) closeAnniversarySheet();
 });
 
 applyTheme(document.documentElement.dataset.theme || 'light');
@@ -761,6 +951,7 @@ Promise.resolve(window.sharedCalendar?.init({
   onCalendars(nextCalendars, activeId) {
     sharedCalendars = nextCalendars;
     activeSharedCalendarId = activeId;
+    if (anniversarySheet.classList.contains('is-open')) renderAnniversarySheet();
     if (preferredCalendarScope === 'shared' && activeSharedCalendarId) {
       setCalendarScope('shared');
       return;
