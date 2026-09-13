@@ -106,6 +106,18 @@ function eventIsAllDay(event) {
   return typeof event.allDay === 'boolean' ? event.allDay : !event.time;
 }
 
+function eventIsMultiDay(event) {
+  return eventStart(event) !== eventEnd(event);
+}
+
+function eventUsesPeriodBar(event) {
+  return eventIsAllDay(event) || eventIsMultiDay(event);
+}
+
+function eventUsesTwoLineTimeBar(event) {
+  return !eventIsAllDay(event) && !eventIsMultiDay(event);
+}
+
 function compareEventsByDisplay(a, b) {
   const startDifference = eventStart(a).localeCompare(eventStart(b));
   if (startDifference) return startDifference;
@@ -381,22 +393,22 @@ function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null, 
       return holiday ? { id: `holiday-${key}`, startDate: key, endDate: key, allDay: true, time: '', title: holiday.name, color: 'holiday', isHoliday: true } : null;
     }).filter(Boolean);
     const weekEvents = [...events, ...birthdayEvents, ...holidayEvents]
-      .filter((event) => eventIsAllDay(event)
+      .filter((event) => eventUsesPeriodBar(event)
         ? eventOverlapsRange(event, weekStartKey, weekEndKey)
         : eventStart(event) >= weekStartKey && eventStart(event) <= weekEndKey)
       .map((event) => {
-        const timed = !eventIsAllDay(event);
+        const twoLineTimeBar = eventUsesTwoLineTimeBar(event);
         return {
           event,
-          clippedStart: timed || eventStart(event) >= weekStartKey ? eventStart(event) : weekStartKey,
-          clippedEnd: timed ? eventStart(event) : (eventEnd(event) > weekEndKey ? weekEndKey : eventEnd(event)),
+          clippedStart: twoLineTimeBar || eventStart(event) >= weekStartKey ? eventStart(event) : weekStartKey,
+          clippedEnd: twoLineTimeBar ? eventStart(event) : (eventEnd(event) > weekEndKey ? weekEndKey : eventEnd(event)),
         };
       })
       .sort((a, b) => a.clippedStart.localeCompare(b.clippedStart)
         || Number(Boolean(b.event.isHoliday)) - Number(Boolean(a.event.isHoliday))
         || Number(Boolean(b.event.isBirthday)) - Number(Boolean(a.event.isBirthday))
-        || Number(eventIsAllDay(b.event)) - Number(eventIsAllDay(a.event))
-        || (!eventIsAllDay(a.event) && !eventIsAllDay(b.event) ? (a.event.time || '99:99').localeCompare(b.event.time || '99:99') : 0)
+        || Number(eventUsesPeriodBar(b.event)) - Number(eventUsesPeriodBar(a.event))
+        || (eventUsesTwoLineTimeBar(a.event) && eventUsesTwoLineTimeBar(b.event) ? (a.event.time || '99:99').localeCompare(b.event.time || '99:99') : 0)
         || b.clippedEnd.localeCompare(a.clippedEnd)
         || a.event.title.localeCompare(b.event.title, 'ko'));
 
@@ -415,7 +427,7 @@ function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null, 
 
     const laneHeights = Array(maxCalendarEventLanes).fill(15);
     placedEvents.forEach(({ event, lane }) => {
-      if (!eventIsAllDay(event)) laneHeights[lane] = 28;
+      if (eventUsesTwoLineTimeBar(event)) laneHeights[lane] = 28;
     });
     const laneOffsets = laneHeights.map((_, lane) => laneHeights.slice(0, lane).reduce((sum, height) => sum + height + 2, 0));
 
@@ -426,21 +438,21 @@ function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null, 
       bar.className = `calendar-event-bar lane-${lane} ${event.color || 'mint'}`;
       if (weekHasFirstMet) bar.classList.add('first-met-week');
       if (event.isHoliday) bar.classList.add('is-holiday-event');
-      if (!eventIsAllDay(event)) bar.classList.add('is-timed');
+      if (eventUsesTwoLineTimeBar(event)) bar.classList.add('is-timed');
       if (event.authorLabel) bar.classList.add('has-author');
-      if (eventIsAllDay(event) && eventStart(event) < weekStartKey) bar.classList.add('continues-before');
-      if (eventIsAllDay(event) && eventEnd(event) > weekEndKey) bar.classList.add('continues-after');
+      if (eventIsMultiDay(event) && eventStart(event) < weekStartKey) bar.classList.add('continues-before');
+      if (eventIsMultiDay(event) && eventEnd(event) > weekEndKey) bar.classList.add('continues-after');
       bar.style.gridColumn = `${startColumn} / ${endColumn + 1}`;
       bar.style.gridRow = String(week + 1);
       bar.style.setProperty('--event-lane-offset', `${laneOffsets[lane]}px`);
-      const eventText = eventIsAllDay(event) ? event.title : `${event.time} ${event.title}`;
+      const eventText = eventUsesPeriodBar(event) ? event.title : `${event.time} ${event.title}`;
       if (event.authorLabel) {
         const author = document.createElement('span');
         author.className = 'calendar-event-author';
         author.textContent = event.authorBadge;
         bar.append(author);
       }
-      if (!eventIsAllDay(event)) {
+      if (eventUsesTwoLineTimeBar(event)) {
         const timedCopy = document.createElement('span');
         timedCopy.className = 'calendar-event-timed-copy';
         const time = document.createElement('span');
