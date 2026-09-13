@@ -356,10 +356,10 @@ function closeAnniversarySheet() {
   }, 220);
 }
 
-function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null) {
+function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null, weekCount = 6) {
   const previousLaneByEvent = new Map();
 
-  for (let week = 0; week < 6; week += 1) {
+  for (let week = 0; week < weekCount; week += 1) {
     const weekStartKey = toKey(addDays(firstVisible, week * 7));
     const weekEndKey = toKey(addDays(firstVisible, week * 7 + 6));
     const weekHasFirstMet = firstMetKey && firstMetKey >= weekStartKey && firstMetKey <= weekEndKey;
@@ -443,10 +443,13 @@ function renderCalendar() {
   if (month === 11) loadHolidays(year + 1);
   calendarGrid.replaceChildren();
 
-  const firstVisible = new Date(year, month, 1 - new Date(year, month, 1).getDay());
-  const lastVisible = addDays(firstVisible, 41);
+  const firstDayOfMonth = new Date(year, month, 1);
+  const weekCount = Math.ceil((firstDayOfMonth.getDay() + new Date(year, month + 1, 0).getDate()) / 7);
+  calendarGrid.style.setProperty('--calendar-weeks', weekCount);
+  const firstVisible = new Date(year, month, 1 - firstDayOfMonth.getDay());
+  const lastVisible = addDays(firstVisible, weekCount * 7 - 1);
   const birthdayEvents = birthdayEventsForRange(toKey(firstVisible), toKey(lastVisible));
-  for (let index = 0; index < 42; index += 1) {
+  for (let index = 0; index < weekCount * 7; index += 1) {
     const date = new Date(firstVisible.getFullYear(), firstVisible.getMonth(), firstVisible.getDate() + index);
     const key = toKey(date);
     const dayEvents = [...events, ...birthdayEvents].filter((event) => eventCoversDate(event, key));
@@ -491,7 +494,7 @@ function renderCalendar() {
     });
     calendarGrid.append(button);
   }
-  renderEventBars(firstVisible, birthdayEvents, firstMetKey);
+  renderEventBars(firstVisible, birthdayEvents, firstMetKey, weekCount);
 }
 
 function renderAgenda() {
