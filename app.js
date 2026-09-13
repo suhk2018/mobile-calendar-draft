@@ -14,6 +14,7 @@ const eventForm = document.querySelector('#eventForm');
 const eventStartDate = document.querySelector('#eventStartDate');
 const eventEndDate = document.querySelector('#eventEndDate');
 const eventTitle = document.querySelector('#eventTitle');
+const eventMemo = document.querySelector('#eventMemo');
 const eventAllDay = document.querySelector('#eventAllDay');
 const eventTime = document.querySelector('#eventTime');
 const eventTimeField = document.querySelector('#eventTimeField');
@@ -60,6 +61,7 @@ let selectedStartDate = new Date(today);
 let selectedEndDate = new Date(today);
 let ignoreClickUntil = 0;
 let swipeStart = null;
+let swipeLatest = null;
 let touchSwipeStart = null;
 let dragAnchor = null;
 let rangeDragging = false;
@@ -73,6 +75,7 @@ let sharedCalendars = [];
 let activeSharedCalendarId = null;
 let editingEvent = null;
 const holidaysByYear = new Map();
+const maxCalendarEventLanes = 5;
 
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -112,6 +115,13 @@ function compareEventsByDisplay(a, b) {
     if (timeDifference) return timeDifference;
   }
   return eventEnd(b).localeCompare(eventEnd(a)) || a.title.localeCompare(b.title, 'ko');
+}
+
+function eventColorVariable(color) {
+  if (color === 'holiday') return 'var(--danger)';
+  if (color === 'birthday') return 'var(--pink)';
+  if (color === 'mint') return 'var(--primary)';
+  return `var(--${color || 'primary'})`;
 }
 
 function eventCoversDate(event, key) {
@@ -363,7 +373,7 @@ function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null, 
     const weekStartKey = toKey(addDays(firstVisible, week * 7));
     const weekEndKey = toKey(addDays(firstVisible, week * 7 + 6));
     const weekHasFirstMet = firstMetKey && firstMetKey >= weekStartKey && firstMetKey <= weekEndKey;
-    const laneEnds = [null, null];
+    const laneEnds = Array(maxCalendarEventLanes).fill(null);
     const holidayEvents = Array.from({ length: 7 }, (_, day) => {
       const date = addDays(firstVisible, week * 7 + day);
       const key = toKey(date);
@@ -465,6 +475,11 @@ function renderCalendar() {
     if (date.getMonth() !== month) button.classList.add('is-outside');
     if (sameDay(date, today)) button.classList.add('is-today');
     if (holiday) button.classList.add('is-holiday');
+    const colorEvent = [...dayEvents].sort((a, b) => Number(Boolean(a.isBirthday)) - Number(Boolean(b.isBirthday)) || compareEventsByDisplay(a, b))[0];
+    if (colorEvent || holiday) {
+      button.classList.add('has-events');
+      button.style.setProperty('--day-event-color', eventColorVariable(colorEvent?.color || 'holiday'));
+    }
     if (key === firstMetKey) button.classList.add('is-first-met');
     if (key >= selectedStartKey && key <= selectedEndKey) button.classList.add('is-in-range');
     if (key === selectedStartKey) button.classList.add('is-range-start');
@@ -475,10 +490,10 @@ function renderCalendar() {
     number.textContent = date.getDate();
     button.append(number);
     const visibleItemCount = dayEvents.length + (holiday ? 1 : 0);
-    if (visibleItemCount > 2) {
+    if (visibleItemCount > maxCalendarEventLanes) {
       const overflow = document.createElement('span');
       overflow.className = 'day-overflow-count';
-      overflow.textContent = `+${visibleItemCount - 2}`;
+      overflow.textContent = `+${visibleItemCount - maxCalendarEventLanes}`;
       overflow.title = `공휴일을 포함해 이 날짜에 표시할 항목이 ${visibleItemCount}개 있어요`;
       button.append(overflow);
     }
@@ -524,6 +539,11 @@ function renderAgenda() {
     const timeText = eventIsAllDay(event) ? '종일' : event.time;
     const authorText = event.authorLabel ? `${event.authorLabel} · ` : '';
     item.querySelector('.event-copy span').textContent = `${authorText}${formatEventDate(event)} · ${timeText}`;
+    const memo = item.querySelector('.event-memo');
+    if (event.memo) {
+      memo.textContent = event.memo;
+      memo.hidden = false;
+    }
     if (event.isBirthday) {
       item.setAttribute('aria-disabled', 'true');
       item.querySelector('.event-marker').classList.add('pink');
@@ -697,6 +717,7 @@ function openComposer(eventToEdit = null) {
   editingEvent = eventToEdit;
   eventForm.reset();
   eventTitle.value = eventToEdit?.title || '';
+  eventMemo.value = eventToEdit?.memo || '';
   eventStartDate.value = eventToEdit ? eventStart(eventToEdit) : toKey(selectedStartDate);
   eventEndDate.value = eventToEdit ? eventEnd(eventToEdit) : toKey(selectedEndDate);
   eventEndDate.min = eventStartDate.value;
@@ -799,6 +820,7 @@ birthdayForm.addEventListener('submit', async (event) => {
 function beginCalendarGesture(x, y, target) {
   clearTimeout(longPressTimer);
   swipeStart = { x, y };
+  swipeLatest = { x, y };
   const dayCell = target.closest('.day-cell');
   dragAnchor = dayCell ? fromKey(dayCell.dataset.date) : null;
   rangeDragging = false;
@@ -815,6 +837,7 @@ function beginCalendarGesture(x, y, target) {
 
 function moveCalendarGesture(x, y) {
   if (!swipeStart) return false;
+  swipeLatest = { x, y };
   if (!rangeDragging) {
     if (Math.hypot(x - swipeStart.x, y - swipeStart.y) > 16) {
       clearTimeout(longPressTimer);
@@ -836,6 +859,7 @@ function endCalendarGesture(x, y) {
   const deltaX = x - swipeStart.x;
   const deltaY = y - swipeStart.y;
   swipeStart = null;
+  swipeLatest = null;
   if (rangeDragging) {
     rangeDragging = false;
     dragAnchor = null;
@@ -843,7 +867,7 @@ function endCalendarGesture(x, y) {
     return;
   }
   dragAnchor = null;
-  if (deltaY < -52 && Math.abs(deltaY) > Math.abs(deltaX) * 1.15) {
+  if (deltaY < -36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
     ignoreClickUntil = Date.now() + 350;
     openAgendaSheet();
     return;
@@ -855,6 +879,11 @@ function endCalendarGesture(x, y) {
 
 calendarViewport.addEventListener('pointerdown', (event) => {
   if (!event.isPrimary) return;
+  try {
+    calendarViewport.setPointerCapture(event.pointerId);
+  } catch {
+    // 일부 오래된 웹뷰는 포인터 캡처를 지원하지 않아도 기본 제스처 처리는 계속한다.
+  }
   beginCalendarGesture(event.clientX, event.clientY, event.target);
 });
 
@@ -869,12 +898,42 @@ calendarViewport.addEventListener('pointerup', (event) => {
 });
 
 calendarViewport.addEventListener('pointercancel', () => {
-  swipeStart = null;
-  dragAnchor = null;
-  rangeDragging = false;
-  clearTimeout(longPressTimer);
-  longPressTimer = null;
+  if (swipeStart && swipeLatest) {
+    endCalendarGesture(swipeLatest.x, swipeLatest.y);
+  } else {
+    swipeStart = null;
+    swipeLatest = null;
+    dragAnchor = null;
+    rangeDragging = false;
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
 });
+
+// 일부 모바일 웹뷰는 위로 미는 중 Pointer 이벤트를 취소하므로 Touch 이벤트로 한 번 더 감지한다.
+if (window.PointerEvent) {
+  calendarViewport.addEventListener('touchstart', (event) => {
+    if (event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    touchSwipeStart = { x: touch.clientX, y: touch.clientY };
+  }, { passive: true });
+
+  calendarViewport.addEventListener('touchend', (event) => {
+    if (!touchSwipeStart || event.changedTouches.length !== 1) return;
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchSwipeStart.x;
+    const deltaY = touch.clientY - touchSwipeStart.y;
+    touchSwipeStart = null;
+    if (deltaY < -36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
+      ignoreClickUntil = Date.now() + 350;
+      if (!agendaPanel.classList.contains('is-open')) openAgendaSheet();
+    }
+  }, { passive: true });
+
+  calendarViewport.addEventListener('touchcancel', () => {
+    touchSwipeStart = null;
+  }, { passive: true });
+}
 
 // 오래된 iOS 홈 화면 웹앱처럼 Pointer Events가 없는 환경도 지원한다.
 if (!window.PointerEvent) {
@@ -901,6 +960,7 @@ if (!window.PointerEvent) {
   calendarViewport.addEventListener('touchcancel', () => {
     touchSwipeStart = null;
     swipeStart = null;
+    swipeLatest = null;
     dragAnchor = null;
     rangeDragging = false;
     clearTimeout(longPressTimer);
@@ -939,6 +999,7 @@ eventForm.addEventListener('submit', async (event) => {
     allDay: eventAllDay.checked,
     time: eventAllDay.checked ? '' : eventTime.value,
     title,
+    memo: String(form.get('memo') || '').trim(),
     color: String(form.get('color')),
     authorId: editingEvent?.authorId,
   };

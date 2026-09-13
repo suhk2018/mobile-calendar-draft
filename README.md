@@ -27,6 +27,7 @@
 - 공유 일정 작성자를 달력의 `나`·`상` 배지와 일정 목록의 `나`·`상대방`으로 구분
 - 등록한 일정 수정과 삭제
 - 일정 항목을 눌러 수정하고 같은 화면에서 삭제
+- 일정별 최대 500자 메모 작성 및 공유
 - 개인 일정과 함께하는 일정 분리
 - 왼쪽 목록에서 여러 공유 캘린더 생성·참여·전환
 - 공유 캘린더별 처음 만난 날을 달력에서 특별 표시
@@ -77,6 +78,7 @@ supabase-delete-calendar-migration.sql 공유 캘린더 삭제/나가기 마이�
 supabase-rename-calendar-migration.sql 공유 캘린더 이름 변경 마이그레이션
 supabase-anniversary-migration.sql 처음 만난 날과 D-day 마이그레이션
 supabase-birthday-migration.sql 공유 캘린더 구성원의 생일 마이그레이션
+supabase-event-memo-migration.sql 공유 일정 메모 마이그레이션
 ```
 
 별도의 빌드 과정 없이 정적 파일을 GitHub Pages로 배포합니다. Supabase가 연결되지 않은 동안에는 일정이 브라우저의 `localStorage`에 저장됩니다.
@@ -90,6 +92,6 @@ supabase-birthday-migration.sql 공유 캘린더 구성원의 생일 마이그�
 5. 변경 내용을 GitHub에 푸시한 뒤 각자 회원가입합니다.
 6. 한 명이 공유 캘린더를 만들고, 표시된 초대 코드를 상대방에게 전달합니다.
 
-기존 Supabase 프로젝트를 사용 중이라면 SQL Editor에서 `supabase-multi-calendar-migration.sql`, `supabase-delete-calendar-migration.sql`, `supabase-rename-calendar-migration.sql`, `supabase-anniversary-migration.sql`, `supabase-birthday-migration.sql`을 한 번씩 실행해야 다중 공유 캘린더, 추가 색상, 삭제·나가기, 이름 변경, D-day와 생일 기능을 사용할 수 있습니다.
+기존 Supabase 프로젝트를 사용 중이라면 SQL Editor에서 `supabase-multi-calendar-migration.sql`, `supabase-delete-calendar-migration.sql`, `supabase-rename-calendar-migration.sql`, `supabase-anniversary-migration.sql`, `supabase-birthday-migration.sql`, `supabase-event-memo-migration.sql`을 한 번씩 실행해야 다중 공유 캘린더, 추가 색상, 삭제·나가기, 이름 변경, D-day, 생일과 일정 메모 기능을 사용할 수 있습니다.
 
 공개 저장소에는 `service_role` 키를 절대로 넣지 마세요. 브라우저에는 anon public key만 사용하고, 데이터 접근은 `supabase-schema.sql`의 RLS 정책으로 제한합니다.

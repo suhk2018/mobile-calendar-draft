@@ -23,6 +23,7 @@ create table public.events (
   couple_id uuid not null references public.couples(id) on delete cascade,
   created_by uuid not null references auth.users(id) on delete cascade,
   title text not null check (char_length(title) between 1 and 42),
+  memo text not null default '' check (char_length(memo) <= 500),
   start_date date not null,
   end_date date not null check (end_date >= start_date),
   event_time time,

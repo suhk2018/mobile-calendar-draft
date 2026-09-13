@@ -16,7 +16,7 @@
   function showError(element, message) { element.textContent = message; element.hidden = !message; }
   function mapEvent(row) {
     const isMine = row.created_by === session?.user?.id;
-    return { id: row.id, date: row.start_date, startDate: row.start_date, endDate: row.end_date, allDay: !row.event_time, time: row.event_time?.slice(0, 5) || '', title: row.title, color: row.color, authorId: row.created_by, authorLabel: isMine ? '나' : '상대방', authorBadge: isMine ? '나' : '상' };
+    return { id: row.id, date: row.start_date, startDate: row.start_date, endDate: row.end_date, allDay: !row.event_time, time: row.event_time?.slice(0, 5) || '', title: row.title, memo: row.memo || '', color: row.color, authorId: row.created_by, authorLabel: isMine ? '나' : '상대방', authorBadge: isMine ? '나' : '상' };
   }
 
   function fromDateKey(key) {
@@ -337,7 +337,7 @@
 
   async function upsertEvent(event) {
     if (!client || !session || !activeCalendar) return false;
-    const values = { title: event.title, start_date: event.startDate, end_date: event.endDate, event_time: event.allDay ? null : event.time, color: event.color };
+    const values = { title: event.title, memo: event.memo || '', start_date: event.startDate, end_date: event.endDate, event_time: event.allDay ? null : event.time, color: event.color };
     const query = event.authorId
       ? client.from('events').update(values).eq('id', event.id).eq('couple_id', activeCalendar.id)
       : client.from('events').insert({ ...values, id: event.id, couple_id: activeCalendar.id, created_by: session.user.id });
