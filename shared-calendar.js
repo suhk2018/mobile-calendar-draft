@@ -1,4 +1,5 @@
 (() => {
+  const meetingDayMemo = 'couple-calendar:meeting-day:v1';
   const config = window.SUPABASE_CONFIG || {};
   const configured = Boolean(config.url && config.anonKey && window.supabase);
   const client = configured ? window.supabase.createClient(config.url, config.anonKey) : null;
@@ -16,7 +17,7 @@
   function showError(element, message) { element.textContent = message; element.hidden = !message; }
   function mapEvent(row) {
     const isMine = row.created_by === session?.user?.id;
-    return { id: row.id, date: row.start_date, startDate: row.start_date, endDate: row.end_date, allDay: !row.event_time, time: row.event_time?.slice(0, 5) || '', title: row.title, memo: row.memo || '', color: row.color, authorId: row.created_by, authorLabel: isMine ? '나' : '상대방', authorBadge: isMine ? '나' : '상' };
+    return { id: row.id, date: row.start_date, startDate: row.start_date, endDate: row.end_date, allDay: !row.event_time, time: row.event_time?.slice(0, 5) || '', title: row.title, memo: row.memo || '', color: row.color, authorId: row.created_by, authorLabel: isMine ? '나' : '상대방', authorBadge: isMine ? '나' : '상', isMeetingDay: row.memo === meetingDayMemo };
   }
 
   function fromDateKey(key) {

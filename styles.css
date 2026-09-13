@@ -187,6 +187,9 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .day-cell.is-first-met:hover, .day-cell.is-first-met:focus-visible { background: linear-gradient(145deg, rgba(255, 112, 145, .22), rgba(255, 164, 116, .17)); }
 .day-cell.is-first-met .day-number { background: linear-gradient(145deg, #f25f83, #f58a64); color: #fff; box-shadow: 0 4px 12px rgba(226, 75, 112, .28); }
 .day-cell.is-first-met.is-outside { opacity: .82; }
+.meeting-day-mark { position: absolute; right: -6px; bottom: -2px; display: grid; width: 15px; height: 15px; place-items: center; border: 2px solid var(--calendar-cell); border-radius: 50%; background: var(--pink); color: #fff; font-size: .46rem; line-height: 1; box-shadow: 0 2px 6px color-mix(in srgb, var(--pink) 34%, transparent); }
+.day-cell.is-meeting-day.has-events .meeting-day-mark { border-color: var(--day-event-background); }
+.day-cell.is-first-met .meeting-day-mark { border-color: transparent; background: #fff; color: #e64d73; }
 .first-met-label { position: relative; z-index: 3; overflow: hidden; color: #dc456b; font-size: .54rem; font-weight: 800; line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
 .day-overflow-count { position: absolute; z-index: 5; top: 1px; left: calc(50% + 7px); display: grid; min-width: 17px; height: 17px; padding: 0 4px; place-items: center; border: 2px solid var(--surface); border-radius: 999px; background: var(--text-secondary); color: var(--surface); font-size: .48rem; font-weight: 800; line-height: 1; box-shadow: 0 2px 5px rgba(0, 0, 0, .12); }
 :root[data-theme="dark"] .day-cell.is-first-met { background: linear-gradient(145deg, rgba(236, 86, 121, .2), rgba(244, 133, 93, .13)); box-shadow: inset 0 0 0 1.5px rgba(255, 130, 158, .34); }
@@ -230,7 +233,7 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .calendar-event-bar.blue { --event-color: var(--blue); }.calendar-event-bar.pink { --event-color: var(--pink); }.calendar-event-bar.sky { --event-color: var(--sky); }
 .calendar-event-bar.lime { --event-color: var(--lime); }.calendar-event-bar.orange { --event-color: var(--orange); }.calendar-event-bar.red { --event-color: var(--red); }
 .calendar-event-bar.holiday { --event-color: var(--danger); background: color-mix(in srgb, var(--danger) 28%, var(--surface)); color: var(--danger); }
-.calendar-event-bar.birthday { --event-color: var(--pink); background: color-mix(in srgb, var(--pink) 30%, var(--surface)); color: color-mix(in srgb, var(--pink) 96%, var(--text)); }
+.calendar-event-bar.birthday, .calendar-event-bar.anniversary { --event-color: var(--pink); background: color-mix(in srgb, var(--pink) 30%, var(--surface)); color: color-mix(in srgb, var(--pink) 96%, var(--text)); }
 .event-marker.mint { background: var(--primary); }.event-marker.coral { background: var(--coral); }.event-marker.violet { background: var(--violet); }.event-marker.sun { background: var(--sun); }
 .event-marker.blue { background: var(--blue); }.event-marker.pink, .event-marker.birthday { background: var(--pink); }.event-marker.sky { background: var(--sky); }.event-marker.lime { background: var(--lime); }.event-marker.orange { background: var(--orange); }.event-marker.red { background: var(--red); }
 .day-cell.is-holiday .day-number { color: var(--danger); }
@@ -257,6 +260,18 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .agenda-actions { display: flex; align-items: center; gap: 8px; }
 .event-count { padding: 5px 9px; border-radius: 999px; background: var(--primary-soft); color: var(--primary-text); font-size: 0.74rem; font-weight: 700; }
 .agenda-close-button { display: grid; width: 38px; height: 38px; padding: 0; place-items: center; border: 0; border-radius: 13px; background: var(--hover); color: var(--text-secondary); font-size: 1.45rem; line-height: 1; }
+.meeting-day-toggle { display: flex; width: 100%; min-height: 64px; margin-bottom: 13px; padding: 10px 12px; align-items: center; gap: 11px; border: 1px solid color-mix(in srgb, var(--pink) 22%, var(--border)); border-radius: 16px; background: color-mix(in srgb, var(--pink) 6%, var(--surface)); color: var(--text); text-align: left; }
+.meeting-day-toggle[hidden] { display: none; }
+.meeting-day-toggle:disabled { opacity: .7; }
+.meeting-day-toggle.is-checked { border-color: color-mix(in srgb, var(--pink) 44%, var(--border)); background: color-mix(in srgb, var(--pink) 13%, var(--surface)); }
+.meeting-toggle-icon { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border-radius: 12px; background: color-mix(in srgb, var(--pink) 14%, var(--surface)); color: var(--pink); font-size: 1rem; }
+.meeting-day-toggle.is-checked .meeting-toggle-icon { background: var(--pink); color: #fff; }
+.meeting-toggle-copy { display: grid; min-width: 0; flex: 1; gap: 3px; }
+.meeting-toggle-copy strong { font-size: .84rem; }
+.meeting-toggle-copy small { color: var(--text-tertiary); font-size: .67rem; }
+.meeting-toggle-state { padding: 6px 9px; border-radius: 999px; background: var(--hover); color: var(--text-secondary); font-size: .68rem; font-weight: 800; }
+.meeting-day-toggle.is-checked .meeting-toggle-state { background: var(--pink); color: #fff; }
+.meeting-day-error { margin: -5px 2px 11px; }
 .agenda-add-button { display: flex; width: 100%; min-height: 52px; margin-top: 17px; padding: 0 18px; align-items: center; justify-content: space-between; border: 0; border-radius: 17px; background: var(--primary); color: #fff; font-size: .86rem; font-weight: 700; }
 .agenda-add-button strong { font-size: 1.45rem; font-weight: 400; }
 .agenda-add-button:hover, .agenda-add-button:focus-visible { background: var(--primary-hover); }
@@ -327,7 +342,7 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .milestone-list, .birthday-list { display: grid; gap: 7px; }
 .milestone-item, .birthday-item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; min-height: 52px; padding: 10px 12px; border-radius: 15px; background: var(--hover); }
 .milestone-icon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 10px; background: var(--primary-soft); color: var(--primary-text); font-size: .9rem; }
-.milestone-item.is-year .milestone-icon, .birthday-item .milestone-icon { background: color-mix(in srgb, var(--pink) 14%, var(--surface)); color: var(--pink); }
+.milestone-item.is-year .milestone-icon, .milestone-item.is-birthday .milestone-icon, .birthday-item .milestone-icon { background: color-mix(in srgb, var(--pink) 14%, var(--surface)); color: var(--pink); }
 .milestone-copy { display: grid; gap: 2px; min-width: 0; }
 .milestone-copy strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
 .milestone-copy span { color: var(--text-tertiary); font-size: .7rem; }

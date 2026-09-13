@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=34" />
-    <link rel="icon" href="icon.svg?v=34" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=34" />
-    <link rel="stylesheet" href="styles.css?v=34" />
+    <link rel="manifest" href="manifest.webmanifest?v=35" />
+    <link rel="icon" href="icon.svg?v=35" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=35" />
+    <link rel="stylesheet" href="styles.css?v=35" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -70,6 +70,12 @@
             <button class="agenda-close-button" id="closeAgenda" type="button" aria-label="선택 날짜 일정 닫기">×</button>
           </div>
         </div>
+        <button class="meeting-day-toggle" id="meetingDayToggle" type="button" hidden aria-pressed="false">
+          <span class="meeting-toggle-icon" aria-hidden="true">♥</span>
+          <span class="meeting-toggle-copy"><strong id="meetingToggleTitle">만난 날로 기록</strong><small>일정 대신 달력에 하트로 남겨요</small></span>
+          <span class="meeting-toggle-state" id="meetingToggleState">체크</span>
+        </button>
+        <p class="form-error meeting-day-error" id="meetingDayError" role="alert" hidden></p>
         <div class="event-list" id="eventList" aria-live="polite"></div>
         <button class="agenda-add-button" id="addEventButton" type="button"><span id="agendaAddLabel">일정 추가</span><strong aria-hidden="true">＋</strong></button>
       </section>
@@ -150,17 +156,16 @@
         </div>
         <section class="milestone-section" aria-labelledby="milestoneTitle">
           <div class="milestone-heading">
-            <h3 id="milestoneTitle">다가오는 기념일</h3>
-            <span>100일 · 1년 단위</span>
+            <h3 id="milestoneTitle">다가오는 기념일과 생일</h3>
+            <span>날짜순으로 함께 확인해요</span>
           </div>
           <div class="milestone-list" id="milestoneList"></div>
         </section>
         <section class="milestone-section birthday-section" aria-labelledby="birthdayTitle">
           <div class="milestone-heading">
-            <h3 id="birthdayTitle">우리의 생일</h3>
+            <h3 id="birthdayTitle">내 생일 설정</h3>
             <span>각자 자신의 생일을 저장해요</span>
           </div>
-          <div class="birthday-list" id="birthdayList"></div>
           <form class="birthday-form" id="birthdayForm">
             <label>내 생일<input id="birthdayInput" name="birthday" type="date" required /></label>
             <button class="save-button" type="submit">저장</button>
@@ -265,8 +270,8 @@
       </button>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=34"></script>
-    <script src="shared-calendar.js?v=34"></script>
-    <script src="app.js?v=34"></script>
+    <script src="supabase-config.js?v=35"></script>
+    <script src="shared-calendar.js?v=35"></script>
+    <script src="app.js?v=35"></script>
   </body>
 </html>
