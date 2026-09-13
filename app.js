@@ -5,6 +5,10 @@ const selectedDateLabel = document.querySelector('#selectedDateLabel');
 const agendaTitle = document.querySelector('#agendaTitle');
 const eventCount = document.querySelector('#eventCount');
 const addEventButton = document.querySelector('#addEventButton');
+const agendaAddLabel = document.querySelector('#agendaAddLabel');
+const agendaPanel = document.querySelector('#agendaPanel');
+const agendaBackdrop = document.querySelector('#agendaBackdrop');
+const closeAgendaButton = document.querySelector('#closeAgenda');
 const eventList = document.querySelector('#eventList');
 const eventForm = document.querySelector('#eventForm');
 const eventStartDate = document.querySelector('#eventStartDate');
@@ -17,6 +21,7 @@ const eventTimePeriod = document.querySelector('#eventTimePeriod');
 const eventTimeReadable = document.querySelector('#eventTimeReadable');
 const composerTitle = document.querySelector('#composerTitle');
 const eventSaveButton = eventForm.querySelector('.save-button');
+const deleteEventButton = document.querySelector('#deleteEventButton');
 const formError = document.querySelector('#formError');
 const composer = document.querySelector('.composer');
 const composerBackdrop = document.querySelector('#composerBackdrop');
@@ -497,6 +502,7 @@ function renderAgenda() {
     .sort(compareEventsByDisplay);
   selectedDateLabel.textContent = formatSelectedRange();
   agendaTitle.textContent = daysInSelection() > 1 ? '선택한 기간의 일정' : sameDay(selectedStartDate, today) ? '오늘의 일정' : '선택한 날짜의 일정';
+  agendaAddLabel.textContent = daysInSelection() > 1 ? `${daysInSelection()}일 일정 추가` : `${formatShortDate(selectedStartDate)}에 일정 추가`;
   eventCount.textContent = `${selectedEvents.length}개`;
   eventList.replaceChildren();
 
@@ -515,31 +521,14 @@ function renderAgenda() {
     const timeText = eventIsAllDay(event) ? '종일' : event.time;
     const authorText = event.authorLabel ? `${event.authorLabel} · ` : '';
     item.querySelector('.event-copy span').textContent = `${authorText}${formatEventDate(event)} · ${timeText}`;
-    const editButton = item.querySelector('.edit-button');
-    const deleteButton = item.querySelector('.delete-button');
     if (event.isBirthday) {
-      editButton.hidden = true;
-      deleteButton.hidden = true;
+      item.setAttribute('aria-disabled', 'true');
       item.querySelector('.event-marker').classList.add('pink');
       eventList.append(item);
       return;
     }
-    editButton.addEventListener('click', () => openComposer(event));
-    deleteButton.addEventListener('click', async () => {
-      try {
-        if (calendarScope === 'shared') {
-          await window.sharedCalendar.deleteEvent(event.id);
-        } else {
-          events = events.filter((savedEvent) => savedEvent.id !== event.id);
-          personalEvents = events;
-          saveEvents();
-          render();
-        }
-      } catch (error) {
-        eventCount.textContent = '오류';
-        console.error(error);
-      }
-    });
+    item.setAttribute('aria-label', `${event.title} 일정 수정`);
+    item.addEventListener('click', () => openComposer(event));
     eventList.append(item);
   });
 }
@@ -549,12 +538,27 @@ function render() {
   renderAgenda();
 }
 
+function openAgendaSheet() {
+  renderAgenda();
+  agendaBackdrop.hidden = false;
+  agendaPanel.classList.add('is-open');
+  setTimeout(() => agendaPanel.focus({ preventScroll: true }), 100);
+}
+
+function closeAgendaSheet() {
+  agendaPanel.classList.remove('is-open');
+  setTimeout(() => {
+    if (!agendaPanel.classList.contains('is-open')) agendaBackdrop.hidden = true;
+  }, 220);
+}
+
 function selectDate(date) {
   const chosenDate = startOfDay(date);
   selectedStartDate = chosenDate;
   selectedEndDate = chosenDate;
   cursor = new Date(chosenDate.getFullYear(), chosenDate.getMonth(), 1);
   render();
+  openAgendaSheet();
 }
 
 function updateDraggedRange(date) {
@@ -602,6 +606,7 @@ function setCalendarScope(scope) {
   }
   calendarScope = scope;
   if (scope !== 'shared' && anniversarySheet.classList.contains('is-open')) closeAnniversarySheet();
+  if (agendaPanel.classList.contains('is-open')) closeAgendaSheet();
   preferredCalendarScope = scope;
   localStorage.setItem(calendarScopeStorageKey, scope);
   events = scope === 'shared' ? sharedEvents : personalEvents;
@@ -697,6 +702,7 @@ function openComposer(eventToEdit = null) {
   eventForm.elements.color.value = eventToEdit?.color || 'mint';
   composerTitle.textContent = eventToEdit ? '일정 수정' : '일정 추가';
   eventSaveButton.textContent = eventToEdit ? '수정 내용 저장' : '일정 저장';
+  deleteEventButton.hidden = !eventToEdit;
   updateAllDayControl();
   formError.hidden = true;
   composerBackdrop.hidden = false;
@@ -728,7 +734,31 @@ document.querySelector('#previousMonth').addEventListener('click', () => changeM
 document.querySelector('#nextMonth').addEventListener('click', () => changeMonth(1));
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
 addEventButton.addEventListener('click', () => openComposer());
+closeAgendaButton.addEventListener('click', closeAgendaSheet);
+agendaBackdrop.addEventListener('click', closeAgendaSheet);
 composerBackdrop.addEventListener('click', closeComposer);
+deleteEventButton.addEventListener('click', async () => {
+  if (!editingEvent || !window.confirm(`'${editingEvent.title}' 일정을 삭제할까요?`)) return;
+  deleteEventButton.disabled = true;
+  try {
+    if (calendarScope === 'shared') {
+      await window.sharedCalendar.deleteEvent(editingEvent.id);
+    } else {
+      events = events.filter((savedEvent) => savedEvent.id !== editingEvent.id);
+      personalEvents = events;
+      saveEvents();
+    }
+    editingEvent = null;
+    closeComposer();
+    render();
+  } catch (error) {
+    formError.textContent = '일정을 삭제하지 못했어요. 인터넷 연결을 확인해 주세요.';
+    formError.hidden = false;
+    console.error(error);
+  } finally {
+    deleteEventButton.disabled = false;
+  }
+});
 themeButton.addEventListener('click', toggleTheme);
 eventAllDay.addEventListener('change', updateAllDayControl);
 eventTime.addEventListener('input', updateTimeReadable);
@@ -810,6 +840,11 @@ function endCalendarGesture(x, y) {
     return;
   }
   dragAnchor = null;
+  if (deltaY < -52 && Math.abs(deltaY) > Math.abs(deltaX) * 1.15) {
+    ignoreClickUntil = Date.now() + 350;
+    openAgendaSheet();
+    return;
+  }
   if (Math.abs(deltaX) < 52 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) return;
   ignoreClickUntil = Date.now() + 350;
   changeMonth(deltaX < 0 ? 1 : -1);
@@ -934,6 +969,7 @@ eventForm.addEventListener('submit', async (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && composer.classList.contains('is-open')) closeComposer();
   if (event.key === 'Escape' && anniversarySheet.classList.contains('is-open')) closeAnniversarySheet();
+  if (event.key === 'Escape' && agendaPanel.classList.contains('is-open')) closeAgendaSheet();
 });
 
 applyTheme(document.documentElement.dataset.theme || 'light');
