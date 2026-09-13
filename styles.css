@@ -216,6 +216,12 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
   white-space: nowrap;
   pointer-events: none;
 }
+.calendar-event-bar.is-movable { pointer-events: auto; cursor: grab; touch-action: none; }
+.calendar-event-bar.is-being-dragged { opacity: .34; filter: saturate(.6); }
+.calendar-viewport.is-event-dragging { cursor: grabbing; }
+.calendar-viewport.is-event-dragging .calendar-event-bar.is-movable { cursor: grabbing; }
+.day-cell.is-event-drop-range { background: color-mix(in srgb, var(--primary) 12%, var(--calendar-cell)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 34%, transparent); }
+.day-cell.is-event-drop-target { background: color-mix(in srgb, var(--primary) 19%, var(--calendar-cell)); box-shadow: inset 0 0 0 2px var(--primary); }
 .calendar-event-bar.first-met-week { margin-top: calc(47px + var(--event-lane-offset, 0px)); }
 .calendar-event-bar.is-timed { height: 28px; padding: 2px 3px 2px 12px; align-items: flex-start; background: color-mix(in srgb, var(--event-color) 16%, var(--surface)); color: color-mix(in srgb, var(--event-color) 72%, var(--text)); line-height: 1.05; }
 .calendar-event-bar.is-timed::before { position: absolute; width: 6px; height: 6px; margin: 3px 0 0 -9px; border-radius: 50%; background: var(--event-color); content: ''; }
@@ -350,6 +356,8 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .birthday-empty { margin: 4px 0 0; padding: 13px; border-radius: 14px; background: var(--hover); color: var(--text-secondary); font-size: .78rem; line-height: 1.5; }
 .birthday-form { grid-template-columns: 1fr auto; align-items: end; gap: 9px; margin-top: 12px; }
 .birthday-form .save-button { min-height: 48px; padding-inline: 19px; }
+.calendar-toast { position: fixed; z-index: 40; right: 50%; bottom: max(22px, calc(12px + env(safe-area-inset-bottom))); width: max-content; max-width: calc(100% - 36px); padding: 11px 15px; border-radius: 13px; background: color-mix(in srgb, var(--text) 92%, transparent); color: var(--surface); font-size: .76rem; font-weight: 750; text-align: center; box-shadow: 0 8px 28px rgba(0,0,0,.2); transform: translateX(50%); }
+.calendar-toast.is-error { background: var(--danger); color: #fff; }
 form { display: grid; gap: 14px; }
 label, legend { display: grid; gap: 7px; color: var(--text-secondary); font-size: 0.76rem; font-weight: 700; }
 input[type="text"], input[type="date"], input[type="time"], textarea { width: 100%; min-height: 48px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 13px; outline-color: var(--primary); background: var(--surface-raised); color: var(--text); }

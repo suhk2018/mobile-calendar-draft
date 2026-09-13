@@ -54,6 +54,7 @@ const milestoneList = document.querySelector('#milestoneList');
 const birthdayForm = document.querySelector('#birthdayForm');
 const birthdayInput = document.querySelector('#birthdayInput');
 const birthdayError = document.querySelector('#birthdayError');
+const calendarToast = document.querySelector('#calendarToast');
 
 const storageKey = 'green-calendar-events-v1';
 const themeStorageKey = 'calendar-theme-v1';
@@ -70,6 +71,8 @@ let touchSwipeStart = null;
 let dragAnchor = null;
 let rangeDragging = false;
 let longPressTimer = null;
+let eventDragState = null;
+let toastTimer = null;
 let calendarScope = 'personal';
 let preferredCalendarScope = localStorage.getItem(calendarScopeStorageKey) === 'shared' ? 'shared' : 'personal';
 let personalEvents = loadEvents();
@@ -96,6 +99,10 @@ function fromKey(key) {
 
 function addDays(date, amount) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + amount);
+}
+
+function daysBetweenKeys(startKey, endKey) {
+  return Math.round((fromKey(endKey) - fromKey(startKey)) / 86400000);
 }
 
 function eventStart(event) {
@@ -478,6 +485,13 @@ function renderEventBars(firstVisible, automaticEvents = [], firstMetKey = null,
       if (event.isHoliday) bar.classList.add('is-holiday-event');
       if (event.isAnniversary) bar.classList.add('is-anniversary-event');
       if (event.isBirthday) bar.classList.add('is-birthday-event');
+      const isMovable = !event.isHoliday && !event.isAnniversary && !event.isBirthday && !event.isMeetingDay;
+      if (isMovable) {
+        bar.classList.add('is-movable');
+        bar.dataset.eventId = event.id;
+        bar.dataset.segmentStart = clippedStart;
+        bar.dataset.segmentEnd = clippedEnd;
+      }
       if (eventUsesTwoLineTimeBar(event)) bar.classList.add('is-timed');
       if (event.authorLabel) bar.classList.add('has-author');
       if (eventIsMultiDay(event) && eventStart(event) < weekStartKey) bar.classList.add('continues-before');
@@ -511,7 +525,7 @@ function renderEventBars(firstVisible, automaticEvents = [], firstMetKey = null,
       } else {
         bar.textContent = eventText;
       }
-      bar.title = `${event.authorLabel ? `${event.authorLabel} · ` : ''}${event.title} (${formatEventDate(event)})`;
+      bar.title = `${event.authorLabel ? `${event.authorLabel} · ` : ''}${event.title} (${formatEventDate(event)})${isMovable ? ' · 길게 눌러 이동' : ''}`;
       bar.setAttribute('aria-hidden', 'true');
       calendarGrid.append(bar);
     });
@@ -970,13 +984,108 @@ birthdayForm.addEventListener('submit', async (event) => {
   }
 });
 
+function showCalendarToast(message, isError = false) {
+  clearTimeout(toastTimer);
+  calendarToast.textContent = message;
+  calendarToast.classList.toggle('is-error', isError);
+  calendarToast.hidden = false;
+  toastTimer = setTimeout(() => { calendarToast.hidden = true; }, 1900);
+}
+
+function dayCellAtPoint(x, y) {
+  return document.elementsFromPoint(x, y).find((element) => element.classList?.contains('day-cell')) || null;
+}
+
+function eventGrabDate(eventBar, x) {
+  const segmentStart = eventBar.dataset.segmentStart;
+  const segmentEnd = eventBar.dataset.segmentEnd;
+  if (!segmentStart || !segmentEnd) return null;
+  const days = daysBetweenKeys(segmentStart, segmentEnd) + 1;
+  const bounds = eventBar.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(.999, (x - bounds.left) / Math.max(1, bounds.width)));
+  return addDays(fromKey(segmentStart), Math.floor(ratio * days));
+}
+
+function clearEventDragPreview() {
+  calendarViewport.classList.remove('is-event-dragging');
+  calendarGrid.querySelectorAll('.is-being-dragged').forEach((bar) => bar.classList.remove('is-being-dragged'));
+  calendarGrid.querySelectorAll('.is-event-drop-range, .is-event-drop-target').forEach((cell) => cell.classList.remove('is-event-drop-range', 'is-event-drop-target'));
+}
+
+function updateEventDropPreview(targetDate) {
+  if (!eventDragState?.active) return;
+  const targetKey = toKey(targetDate);
+  const nextStart = addDays(targetDate, -eventDragState.grabOffset);
+  const nextEnd = addDays(nextStart, eventDragState.duration);
+  eventDragState.targetStart = toKey(nextStart);
+  eventDragState.targetEnd = toKey(nextEnd);
+  calendarGrid.querySelectorAll('.is-event-drop-range, .is-event-drop-target').forEach((cell) => cell.classList.remove('is-event-drop-range', 'is-event-drop-target'));
+  calendarGrid.querySelectorAll('.day-cell').forEach((cell) => {
+    if (cell.dataset.date >= eventDragState.targetStart && cell.dataset.date <= eventDragState.targetEnd) cell.classList.add('is-event-drop-range');
+    if (cell.dataset.date === targetKey) cell.classList.add('is-event-drop-target');
+  });
+}
+
+async function moveCalendarEvent(event, startDate, endDate) {
+  const movedEvent = { ...event, date: startDate, startDate, endDate };
+  try {
+    if (calendarScope === 'shared') {
+      await window.sharedCalendar.upsertEvent(movedEvent);
+    } else {
+      const index = events.findIndex((savedEvent) => savedEvent.id === event.id);
+      if (index < 0) throw new Error('이동할 일정을 찾지 못했습니다.');
+      events.splice(index, 1, movedEvent);
+      personalEvents = events;
+      saveEvents();
+    }
+    selectedStartDate = fromKey(startDate);
+    selectedEndDate = fromKey(endDate);
+    cursor = new Date(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), 1);
+    render();
+    showCalendarToast(`${event.title} 일정을 옮겼어요.`);
+  } catch (error) {
+    render();
+    showCalendarToast('일정을 옮기지 못했어요. 다시 시도해 주세요.', true);
+    console.error(error);
+  }
+}
+
 function beginCalendarGesture(x, y, target) {
   clearTimeout(longPressTimer);
+  clearEventDragPreview();
   swipeStart = { x, y };
   swipeLatest = { x, y };
-  const dayCell = target.closest('.day-cell');
-  dragAnchor = dayCell ? fromKey(dayCell.dataset.date) : null;
+  const eventBar = target.closest('.calendar-event-bar.is-movable');
+  const grabbedDate = eventBar ? eventGrabDate(eventBar, x) : null;
+  const dayCell = target.closest('.day-cell') || dayCellAtPoint(x, y);
+  dragAnchor = grabbedDate || (dayCell ? fromKey(dayCell.dataset.date) : null);
   rangeDragging = false;
+  eventDragState = null;
+
+  if (eventBar && grabbedDate) {
+    const event = events.find((candidate) => candidate.id === eventBar.dataset.eventId);
+    if (!event) return;
+    eventDragState = {
+      active: false,
+      event,
+      duration: daysBetweenKeys(eventStart(event), eventEnd(event)),
+      grabOffset: daysBetweenKeys(eventStart(event), toKey(grabbedDate)),
+      targetStart: eventStart(event),
+      targetEnd: eventEnd(event),
+    };
+    longPressTimer = setTimeout(() => {
+      if (!eventDragState) return;
+      eventDragState.active = true;
+      calendarViewport.classList.add('is-event-dragging');
+      calendarGrid.querySelectorAll('.calendar-event-bar.is-movable').forEach((bar) => {
+        if (bar.dataset.eventId === event.id) bar.classList.add('is-being-dragged');
+      });
+      updateEventDropPreview(grabbedDate);
+      navigator.vibrate?.(22);
+    }, 480);
+    return;
+  }
+
   if (dragAnchor) {
     longPressTimer = setTimeout(() => {
       rangeDragging = true;
@@ -991,15 +1100,21 @@ function beginCalendarGesture(x, y, target) {
 function moveCalendarGesture(x, y) {
   if (!swipeStart) return false;
   swipeLatest = { x, y };
+  if (eventDragState?.active) {
+    const dayCell = dayCellAtPoint(x, y);
+    if (dayCell) updateEventDropPreview(fromKey(dayCell.dataset.date));
+    return true;
+  }
   if (!rangeDragging) {
     if (Math.hypot(x - swipeStart.x, y - swipeStart.y) > 16) {
       clearTimeout(longPressTimer);
       longPressTimer = null;
+      eventDragState = null;
     }
     return false;
   }
   if (!dragAnchor) return false;
-  const dayCell = document.elementFromPoint(x, y)?.closest('.day-cell');
+  const dayCell = dayCellAtPoint(x, y);
   if (!dayCell) return true;
   updateDraggedRange(fromKey(dayCell.dataset.date));
   return true;
@@ -1012,19 +1127,32 @@ function endCalendarGesture(x, y) {
   const deltaX = x - swipeStart.x;
   const deltaY = y - swipeStart.y;
   const tappedDate = dragAnchor ? new Date(dragAnchor) : null;
+  const completedEventDrag = eventDragState?.active ? { ...eventDragState } : null;
   swipeStart = null;
   swipeLatest = null;
+
+  if (completedEventDrag) {
+    eventDragState = null;
+    dragAnchor = null;
+    ignoreClickUntil = Date.now() + 450;
+    clearEventDragPreview();
+    if (completedEventDrag.targetStart !== eventStart(completedEventDrag.event) || completedEventDrag.targetEnd !== eventEnd(completedEventDrag.event)) {
+      void moveCalendarEvent(completedEventDrag.event, completedEventDrag.targetStart, completedEventDrag.targetEnd);
+    }
+    return;
+  }
+  eventDragState = null;
   if (rangeDragging) {
     rangeDragging = false;
     dragAnchor = null;
     ignoreClickUntil = Date.now() + 400;
-    openAgendaSheet();
+    setTimeout(openAgendaSheet, 80);
     return;
   }
   dragAnchor = null;
   if (tappedDate && Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
     ignoreClickUntil = Date.now() + 350;
-    selectDate(tappedDate);
+    setTimeout(() => selectDate(tappedDate), 80);
     return;
   }
   if (deltaY < -36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
@@ -1065,9 +1193,15 @@ calendarViewport.addEventListener('pointercancel', () => {
     swipeLatest = null;
     dragAnchor = null;
     rangeDragging = false;
+    eventDragState = null;
+    clearEventDragPreview();
     clearTimeout(longPressTimer);
     longPressTimer = null;
   }
+});
+
+calendarViewport.addEventListener('contextmenu', (event) => {
+  if (event.target.closest('.day-cell, .calendar-event-bar.is-movable')) event.preventDefault();
 });
 
 // 일부 모바일 웹뷰는 위로 미는 중 Pointer 이벤트를 취소하므로 Touch 이벤트로 한 번 더 감지한다.
@@ -1075,18 +1209,28 @@ if (window.PointerEvent) {
   calendarViewport.addEventListener('touchstart', (event) => {
     if (event.touches.length !== 1) return;
     const touch = event.touches[0];
-    touchSwipeStart = { x: touch.clientX, y: touch.clientY };
+    const dayCell = event.target.closest('.day-cell') || dayCellAtPoint(touch.clientX, touch.clientY);
+    touchSwipeStart = { x: touch.clientX, y: touch.clientY, dateKey: dayCell?.dataset.date || null };
   }, { passive: true });
 
   calendarViewport.addEventListener('touchend', (event) => {
     if (!touchSwipeStart || event.changedTouches.length !== 1) return;
     const touch = event.changedTouches[0];
-    const deltaX = touch.clientX - touchSwipeStart.x;
-    const deltaY = touch.clientY - touchSwipeStart.y;
+    const touchStart = touchSwipeStart;
+    const deltaX = touch.clientX - touchStart.x;
+    const deltaY = touch.clientY - touchStart.y;
     touchSwipeStart = null;
     if (deltaY < -36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
       ignoreClickUntil = Date.now() + 350;
       if (!agendaPanel.classList.contains('is-open')) openAgendaSheet();
+      return;
+    }
+    if (touchStart.dateKey && Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
+      setTimeout(() => {
+        if (Date.now() < ignoreClickUntil || rangeDragging || eventDragState?.active || agendaPanel.classList.contains('is-open')) return;
+        ignoreClickUntil = Date.now() + 350;
+        selectDate(fromKey(touchStart.dateKey));
+      }, 80);
     }
   }, { passive: true });
 
@@ -1123,6 +1267,8 @@ if (!window.PointerEvent) {
     swipeLatest = null;
     dragAnchor = null;
     rangeDragging = false;
+    eventDragState = null;
+    clearEventDragPreview();
     clearTimeout(longPressTimer);
     longPressTimer = null;
   }, { passive: true });
