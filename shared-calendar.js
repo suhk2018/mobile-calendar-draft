@@ -104,24 +104,45 @@
   function renderCalendarCards() {
     ui.coupleList.replaceChildren();
     calendars.forEach((calendar) => {
+      const isActive = calendar.id === activeCalendar?.id;
+      const isOwner = calendar.created_by === session.user.id;
       const card = document.createElement('div');
-      card.className = 'couple-card';
+      card.className = `couple-card${isActive ? ' is-active' : ''}`;
+
+      const header = document.createElement('div');
+      header.className = 'calendar-card-header';
+      const icon = document.createElement('span');
+      icon.className = 'calendar-card-icon';
+      icon.textContent = '♥';
+      icon.setAttribute('aria-hidden', 'true');
+      const identity = document.createElement('div');
+      identity.className = 'calendar-card-identity';
       const caption = document.createElement('span');
-      caption.textContent = calendar.id === activeCalendar?.id ? '현재 보고 있는 캘린더' : '함께 쓰는 캘린더';
+      caption.textContent = isActive ? '현재 사용 중' : '공유 캘린더';
       const name = document.createElement('strong');
       name.textContent = calendar.name;
+      identity.append(caption, name);
+      header.append(icon, identity);
+      if (isActive) {
+        const status = document.createElement('span');
+        status.className = 'calendar-active-badge';
+        status.textContent = '사용 중';
+        header.append(status);
+      }
+
       const anniversary = document.createElement('p');
       anniversary.className = 'couple-anniversary';
-      anniversary.textContent = formatAnniversary(calendar.first_met_on);
+      anniversary.textContent = calendar.first_met_on ? formatAnniversary(calendar.first_met_on) : '처음 만난 날을 설정해 주세요';
+
       const openButton = document.createElement('button');
       openButton.type = 'button';
       openButton.className = 'calendar-open-button';
-      openButton.textContent = calendar.id === activeCalendar?.id ? '선택됨' : '열기';
+      openButton.textContent = '이 캘린더 열기';
       openButton.addEventListener('click', async () => { await selectCalendar(calendar.id); closeSheet(); });
+
       const removeButton = document.createElement('button');
       removeButton.type = 'button';
       removeButton.className = 'calendar-delete-button';
-      const isOwner = calendar.created_by === session.user.id;
       removeButton.textContent = isOwner ? '삭제' : '나가기';
       removeButton.addEventListener('click', async () => {
         const message = isOwner
@@ -136,10 +157,14 @@
       });
       const actions = document.createElement('div');
       actions.className = 'calendar-card-actions';
-      actions.append(openButton);
+      if (!isActive) actions.append(openButton);
+
       const renameForm = document.createElement('form');
       renameForm.className = 'calendar-rename-form';
       renameForm.hidden = true;
+      const renameTitle = document.createElement('strong');
+      renameTitle.className = 'calendar-inline-form-title';
+      renameTitle.textContent = '캘린더 이름 변경';
       const renameInput = document.createElement('input');
       renameInput.type = 'text';
       renameInput.maxLength = 30;
@@ -152,9 +177,11 @@
       const renameCancelButton = document.createElement('button');
       renameCancelButton.type = 'button';
       renameCancelButton.textContent = '취소';
+      let renameButton;
       renameCancelButton.addEventListener('click', () => {
         renameInput.value = calendar.name;
         renameForm.hidden = true;
+        renameButton?.setAttribute('aria-expanded', 'false');
       });
       renameForm.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -168,22 +195,33 @@
         renameForm.hidden = true;
         await loadCalendars(calendar.id);
       });
-      renameForm.append(renameInput, renameSaveButton, renameCancelButton);
+      renameForm.append(renameTitle, renameInput, renameSaveButton, renameCancelButton);
       if (isOwner) {
-        const renameButton = document.createElement('button');
+        renameButton = document.createElement('button');
         renameButton.type = 'button';
         renameButton.className = 'calendar-rename-button';
         renameButton.textContent = '이름 변경';
+        renameButton.setAttribute('aria-expanded', 'false');
         renameButton.addEventListener('click', () => {
-          renameForm.hidden = false;
-          renameInput.focus();
-          renameInput.select();
+          const shouldOpen = renameForm.hidden;
+          renameForm.hidden = !shouldOpen;
+          anniversaryForm.hidden = true;
+          renameButton.setAttribute('aria-expanded', String(shouldOpen));
+          anniversaryButton.setAttribute('aria-expanded', 'false');
+          if (shouldOpen) {
+            renameInput.focus();
+            renameInput.select();
+          }
         });
         actions.append(renameButton);
       }
+
       const anniversaryForm = document.createElement('form');
       anniversaryForm.className = 'anniversary-form';
       anniversaryForm.hidden = true;
+      const anniversaryTitle = document.createElement('strong');
+      anniversaryTitle.className = 'calendar-inline-form-title';
+      anniversaryTitle.textContent = '처음 만난 날 변경';
       const anniversaryInput = document.createElement('input');
       anniversaryInput.type = 'date';
       anniversaryInput.required = true;
@@ -198,6 +236,7 @@
       anniversaryCancelButton.addEventListener('click', () => {
         anniversaryInput.value = calendar.first_met_on || '';
         anniversaryForm.hidden = true;
+        anniversaryButton.setAttribute('aria-expanded', 'false');
       });
       anniversaryForm.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -210,31 +249,52 @@
         anniversaryForm.hidden = true;
         await loadCalendars(calendar.id);
       });
-      anniversaryForm.append(anniversaryInput, anniversarySaveButton, anniversaryCancelButton);
+      anniversaryForm.append(anniversaryTitle, anniversaryInput, anniversarySaveButton, anniversaryCancelButton);
       const anniversaryButton = document.createElement('button');
       anniversaryButton.type = 'button';
       anniversaryButton.className = 'calendar-anniversary-button';
-      anniversaryButton.textContent = calendar.first_met_on ? '만난 날 변경' : '만난 날 설정';
+      anniversaryButton.textContent = calendar.first_met_on ? '만난 날' : '날짜 설정';
+      anniversaryButton.setAttribute('aria-expanded', 'false');
       anniversaryButton.addEventListener('click', () => {
-        anniversaryForm.hidden = false;
-        anniversaryInput.focus();
+        const shouldOpen = anniversaryForm.hidden;
+        anniversaryForm.hidden = !shouldOpen;
+        renameForm.hidden = true;
+        anniversaryButton.setAttribute('aria-expanded', String(shouldOpen));
+        renameButton?.setAttribute('aria-expanded', 'false');
+        if (shouldOpen) anniversaryInput.focus();
       });
       actions.append(anniversaryButton);
       actions.append(removeButton);
-      const invite = document.createElement('p');
-      invite.append('초대 코드 ');
+
+      const invite = document.createElement('div');
+      invite.className = 'calendar-invite-row';
+      const inviteDescription = document.createElement('div');
+      const inviteLabel = document.createElement('span');
+      inviteLabel.textContent = '초대 코드';
+      const inviteHelp = document.createElement('small');
+      inviteHelp.textContent = '상대방에게 보내 함께 사용하세요';
+      inviteDescription.append(inviteLabel, inviteHelp);
       const inviteButton = document.createElement('button');
       inviteButton.type = 'button';
-      inviteButton.className = 'invite-code';
-      inviteButton.textContent = calendar.invite_code;
-      inviteButton.title = '눌러서 복사';
+      inviteButton.className = 'invite-copy-button';
+      inviteButton.setAttribute('aria-label', `초대 코드 ${calendar.invite_code} 복사`);
+      const inviteCode = document.createElement('strong');
+      inviteCode.textContent = calendar.invite_code;
+      const inviteAction = document.createElement('span');
+      inviteAction.textContent = '복사';
+      inviteButton.append(inviteCode, inviteAction);
       inviteButton.addEventListener('click', async () => {
-        await navigator.clipboard.writeText(calendar.invite_code);
-        inviteButton.textContent = '복사됨!';
-        setTimeout(() => { inviteButton.textContent = calendar.invite_code; }, 1200);
+        try {
+          await navigator.clipboard.writeText(calendar.invite_code);
+          inviteAction.textContent = '복사됨';
+          setTimeout(() => { inviteAction.textContent = '복사'; }, 1200);
+        } catch {
+          showError(ui.coupleError, '초대 코드를 복사하지 못했어요. 코드를 길게 눌러 복사해 주세요.');
+        }
       });
-      invite.append(inviteButton);
-      card.append(caption, name, actions, anniversary, invite, renameForm, anniversaryForm);
+      invite.append(inviteDescription, inviteButton);
+
+      card.append(header, anniversary, invite, actions, renameForm, anniversaryForm);
       ui.coupleList.append(card);
     });
   }
@@ -250,6 +310,8 @@
     }
     ui.accountEmail.textContent = session.user.email;
     ui.coupleConnectedView.hidden = calendars.length === 0;
+    ui.coupleCount.textContent = `${calendars.length}개`;
+    if (calendars.length === 0) ui.coupleSetupView.open = true;
     renderCalendarCards();
     connectionHandler(calendars.length > 0);
   }
@@ -289,7 +351,7 @@
     connectionHandler = onConnection || (() => {});
     calendarsHandler = onCalendars || (() => {});
     calendarActivatedHandler = onCalendarActivated || (() => {});
-    ['accountButton', 'accountBackdrop', 'accountSheet', 'closeAccount', 'connectionNotice', 'signedOutView', 'signedInView', 'authForm', 'authError', 'signUpButton', 'accountEmail', 'signOutButton', 'coupleConnectedView', 'coupleSetupView', 'coupleList', 'createCoupleForm', 'joinCoupleForm', 'coupleError'].forEach((id) => { ui[id] = byId(id); });
+    ['accountButton', 'accountBackdrop', 'accountSheet', 'closeAccount', 'connectionNotice', 'signedOutView', 'signedInView', 'authForm', 'authError', 'signUpButton', 'accountEmail', 'signOutButton', 'coupleConnectedView', 'coupleSetupView', 'coupleCount', 'coupleList', 'createCoupleForm', 'joinCoupleForm', 'coupleError'].forEach((id) => { ui[id] = byId(id); });
     ui.accountButton.addEventListener('click', openSheet);
     ui.closeAccount.addEventListener('click', closeSheet);
     ui.accountBackdrop.addEventListener('click', closeSheet);
@@ -311,6 +373,7 @@
         form.reset();
         await loadCalendars(data);
         calendarActivatedHandler(data);
+        ui.coupleSetupView.open = false;
         closeSheet();
       });
     });
@@ -325,6 +388,7 @@
         form.reset();
         await loadCalendars(data);
         calendarActivatedHandler(data);
+        ui.coupleSetupView.open = false;
         closeSheet();
       });
     });

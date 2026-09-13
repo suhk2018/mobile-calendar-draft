@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=33" />
-    <link rel="icon" href="icon.svg?v=33" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=33" />
-    <link rel="stylesheet" href="styles.css?v=33" />
+    <link rel="manifest" href="manifest.webmanifest?v=34" />
+    <link rel="icon" href="icon.svg?v=34" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=34" />
+    <link rel="stylesheet" href="styles.css?v=34" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -193,7 +193,7 @@
       <div class="composer-heading">
         <div>
           <p class="eyebrow">TOGETHER</p>
-          <h2 id="accountTitle">캘린더 공유</h2>
+          <h2 id="accountTitle">공유 캘린더 관리</h2>
         </div>
         <button class="close-composer" id="closeAccount" type="button" aria-label="공유 설정 닫기">×</button>
       </div>
@@ -220,22 +220,38 @@
           <button class="delete-button" id="signOutButton" type="button">로그아웃</button>
         </div>
         <div id="coupleConnectedView" hidden>
-          <p class="sheet-description">참여 중인 공유 캘린더</p>
+          <div class="sheet-section-heading">
+            <div><h3>내 공유 캘린더</h3><span id="coupleCount"></span></div>
+            <p>캘린더를 선택하거나 필요한 설정을 바로 바꿀 수 있어요.</p>
+          </div>
           <div class="couple-list" id="coupleList"></div>
         </div>
-        <div id="coupleSetupView" class="couple-setup-view">
-          <form id="createCoupleForm">
-            <label>커플 캘린더 이름<input name="name" type="text" maxlength="30" required placeholder="예: 우리의 캘린더" /></label>
-            <label>처음 만난 날<input name="firstMetOn" type="date" required /></label>
-            <button class="save-button" type="submit">새 공유 캘린더 만들기</button>
-          </form>
-          <div class="or-divider"><span>또는</span></div>
-          <form id="joinCoupleForm">
-            <label>상대방의 초대 코드<input name="code" type="text" maxlength="8" required placeholder="예: LOVE1234" /></label>
-            <button class="secondary-button" type="submit">초대 코드로 참여하기</button>
-          </form>
-          <p class="form-error" id="coupleError" role="alert" hidden></p>
-        </div>
+        <details id="coupleSetupView" class="couple-setup-view">
+          <summary>
+            <span class="setup-add-icon" aria-hidden="true">＋</span>
+            <span><strong>공유 캘린더 추가</strong><small>새로 만들거나 초대 코드로 참여해요</small></span>
+            <span class="setup-chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="couple-setup-content">
+            <section class="setup-block" aria-labelledby="createCalendarTitle">
+              <div class="setup-block-heading"><strong id="createCalendarTitle">새 캘린더 만들기</strong><span>내가 관리할 캘린더를 만들어요</span></div>
+              <form id="createCoupleForm">
+                <label>캘린더 이름<input name="name" type="text" maxlength="30" required placeholder="예: 우리의 캘린더" /></label>
+                <label>처음 만난 날<input name="firstMetOn" type="date" required /></label>
+                <button class="save-button" type="submit">캘린더 만들기</button>
+              </form>
+            </section>
+            <div class="or-divider"><span>또는</span></div>
+            <section class="setup-block" aria-labelledby="joinCalendarTitle">
+              <div class="setup-block-heading"><strong id="joinCalendarTitle">초대 코드로 참여</strong><span>상대방에게 받은 코드를 입력해요</span></div>
+              <form id="joinCoupleForm">
+                <label>초대 코드<input name="code" type="text" maxlength="8" required placeholder="예: LOVE1234" /></label>
+                <button class="secondary-button" type="submit">캘린더 참여하기</button>
+              </form>
+            </section>
+          </div>
+        </details>
+        <p class="form-error couple-management-error" id="coupleError" role="alert" hidden></p>
       </div>
     </section>
     <template id="eventTemplate">
@@ -249,8 +265,8 @@
       </button>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=33"></script>
-    <script src="shared-calendar.js?v=33"></script>
-    <script src="app.js?v=33"></script>
+    <script src="supabase-config.js?v=34"></script>
+    <script src="shared-calendar.js?v=34"></script>
+    <script src="app.js?v=34"></script>
   </body>
 </html>
