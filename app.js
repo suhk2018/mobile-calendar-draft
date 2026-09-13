@@ -459,11 +459,16 @@ function renderCalendar() {
   const firstVisible = new Date(year, month, 1 - firstDayOfMonth.getDay());
   const lastVisible = addDays(firstVisible, weekCount * 7 - 1);
   const birthdayEvents = birthdayEventsForRange(toKey(firstVisible), toKey(lastVisible));
-  for (let index = 0; index < weekCount * 7; index += 1) {
+  const visibleDays = Array.from({ length: weekCount * 7 }, (_, index) => {
     const date = new Date(firstVisible.getFullYear(), firstVisible.getMonth(), firstVisible.getDate() + index);
     const key = toKey(date);
     const dayEvents = [...events, ...birthdayEvents].filter((event) => eventCoversDate(event, key));
     const holiday = getHoliday(key);
+    const colorEvent = [...dayEvents].sort((a, b) => Number(Boolean(a.isBirthday)) - Number(Boolean(b.isBirthday)) || compareEventsByDisplay(a, b))[0];
+    return { date, key, dayEvents, holiday, colorEvent };
+  });
+
+  visibleDays.forEach(({ date, key, dayEvents, holiday, colorEvent }, index) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'day-cell';
@@ -475,10 +480,16 @@ function renderCalendar() {
     if (date.getMonth() !== month) button.classList.add('is-outside');
     if (sameDay(date, today)) button.classList.add('is-today');
     if (holiday) button.classList.add('is-holiday');
-    const colorEvent = [...dayEvents].sort((a, b) => Number(Boolean(a.isBirthday)) - Number(Boolean(b.isBirthday)) || compareEventsByDisplay(a, b))[0];
     if (colorEvent || holiday) {
       button.classList.add('has-events');
       button.style.setProperty('--day-event-color', eventColorVariable(colorEvent?.color || 'holiday'));
+    }
+    const isMultiDayColorEvent = colorEvent && eventStart(colorEvent) !== eventEnd(colorEvent) && key !== firstMetKey;
+    if (isMultiDayColorEvent && index % 7 !== 0 && visibleDays[index - 1].colorEvent?.id === colorEvent.id && visibleDays[index - 1].key !== firstMetKey) {
+      button.classList.add('event-range-continues-left');
+    }
+    if (isMultiDayColorEvent && index % 7 !== 6 && visibleDays[index + 1].colorEvent?.id === colorEvent.id && visibleDays[index + 1].key !== firstMetKey) {
+      button.classList.add('event-range-continues-right');
     }
     if (key === firstMetKey) button.classList.add('is-first-met');
     if (key >= selectedStartKey && key <= selectedEndKey) button.classList.add('is-in-range');
@@ -508,7 +519,7 @@ function renderCalendar() {
       selectDate(date);
     });
     calendarGrid.append(button);
-  }
+  });
   renderEventBars(firstVisible, birthdayEvents, firstMetKey, weekCount);
 }
 
