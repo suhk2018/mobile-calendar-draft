@@ -425,13 +425,21 @@ function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null, 
       placedEvents.push({ event, clippedStart, clippedEnd, lane });
     });
 
-    const laneHeights = Array(maxCalendarEventLanes).fill(15);
-    placedEvents.forEach(({ event, lane }) => {
-      if (eventUsesTwoLineTimeBar(event)) laneHeights[lane] = 28;
+    const positionedEvents = [];
+    placedEvents.forEach((placedEvent) => {
+      const height = eventUsesTwoLineTimeBar(placedEvent.event) ? 28 : 15;
+      const blockers = positionedEvents
+        .filter((other) => other.clippedStart <= placedEvent.clippedEnd && other.clippedEnd >= placedEvent.clippedStart)
+        .sort((a, b) => a.offset - b.offset);
+      let offset = 0;
+      blockers.forEach((blocker) => {
+        const gap = eventUsesTwoLineTimeBar(placedEvent.event) || eventUsesTwoLineTimeBar(blocker.event) ? 2 : 0;
+        if (offset + height + gap > blocker.offset) offset = Math.max(offset, blocker.offset + blocker.height + gap);
+      });
+      positionedEvents.push({ ...placedEvent, height, offset });
     });
-    const laneOffsets = laneHeights.map((_, lane) => laneHeights.slice(0, lane).reduce((sum, height) => sum + height + 2, 0));
 
-    placedEvents.forEach(({ event, clippedStart, clippedEnd, lane }) => {
+    positionedEvents.forEach(({ event, clippedStart, clippedEnd, lane, offset }) => {
       const startColumn = addDays(firstVisible, week * 7).getDay() + Math.round((fromKey(clippedStart) - fromKey(weekStartKey)) / 86400000) + 1;
       const endColumn = startColumn + Math.round((fromKey(clippedEnd) - fromKey(clippedStart)) / 86400000);
       const bar = document.createElement('span');
@@ -444,7 +452,7 @@ function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null, 
       if (eventIsMultiDay(event) && eventEnd(event) > weekEndKey) bar.classList.add('continues-after');
       bar.style.gridColumn = `${startColumn} / ${endColumn + 1}`;
       bar.style.gridRow = String(week + 1);
-      bar.style.setProperty('--event-lane-offset', `${laneOffsets[lane]}px`);
+      bar.style.setProperty('--event-lane-offset', `${offset}px`);
       const eventText = eventUsesPeriodBar(event) ? event.title : `${event.time} ${event.title}`;
       if (event.authorLabel) {
         const author = document.createElement('span');
