@@ -351,12 +351,13 @@ function closeAnniversarySheet() {
   }, 220);
 }
 
-function renderEventBars(firstVisible, birthdayEvents = []) {
+function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null) {
   const previousLaneByEvent = new Map();
 
   for (let week = 0; week < 6; week += 1) {
     const weekStartKey = toKey(addDays(firstVisible, week * 7));
     const weekEndKey = toKey(addDays(firstVisible, week * 7 + 6));
+    const weekHasFirstMet = firstMetKey && firstMetKey >= weekStartKey && firstMetKey <= weekEndKey;
     const laneEnds = [null, null];
     const holidayEvents = Array.from({ length: 7 }, (_, day) => {
       const date = addDays(firstVisible, week * 7 + day);
@@ -397,6 +398,7 @@ function renderEventBars(firstVisible, birthdayEvents = []) {
       const endColumn = startColumn + Math.round((fromKey(clippedEnd) - fromKey(clippedStart)) / 86400000);
       const bar = document.createElement('span');
       bar.className = `calendar-event-bar lane-${lane} ${event.color || 'mint'}`;
+      if (weekHasFirstMet) bar.classList.add('first-met-week');
       if (event.isHoliday) bar.classList.add('is-holiday-event');
       if (!eventIsAllDay(event)) bar.classList.add('is-timed');
       if (event.authorLabel) bar.classList.add('has-author');
@@ -484,7 +486,7 @@ function renderCalendar() {
     });
     calendarGrid.append(button);
   }
-  renderEventBars(firstVisible, birthdayEvents);
+  renderEventBars(firstVisible, birthdayEvents, firstMetKey);
 }
 
 function renderAgenda() {
