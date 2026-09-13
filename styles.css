@@ -485,7 +485,7 @@ legend { margin-bottom: 8px; }
   .agenda-panel { padding: 23px 25px; }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 719px) {
   .app-shell { display: flex; min-height: 100svh; min-height: 100dvh; padding: max(22px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(16px, calc(10px + env(safe-area-inset-bottom))) max(14px, env(safe-area-inset-left)); flex-direction: column; }
   .app-shell.is-agenda-open { height: 100svh; height: 100dvh; overflow: hidden; }
   .topbar { margin-bottom: 14px; padding: 0 2px; flex: 0 0 auto; }

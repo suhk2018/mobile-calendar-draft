@@ -86,7 +86,7 @@ const holidaysByYear = new Map();
 const maxCalendarEventLanes = 5;
 
 function usesInlineAgenda() {
-  return window.matchMedia('(max-width: 480px)').matches;
+  return window.matchMedia('(max-width: 719px)').matches;
 }
 
 function calendarIsCompact() {
