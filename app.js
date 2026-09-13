@@ -400,6 +400,7 @@ function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null, 
         || b.clippedEnd.localeCompare(a.clippedEnd)
         || a.event.title.localeCompare(b.event.title, 'ko'));
 
+    const placedEvents = [];
     weekEvents.forEach(({ event, clippedStart, clippedEnd }) => {
       const preferredLane = previousLaneByEvent.get(event.id);
       let lane = Number.isInteger(preferredLane) && (!laneEnds[preferredLane] || laneEnds[preferredLane] < clippedStart)
@@ -409,6 +410,16 @@ function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null, 
 
       laneEnds[lane] = clippedEnd;
       previousLaneByEvent.set(event.id, lane);
+      placedEvents.push({ event, clippedStart, clippedEnd, lane });
+    });
+
+    const laneHeights = Array(maxCalendarEventLanes).fill(15);
+    placedEvents.forEach(({ event, lane }) => {
+      if (!eventIsAllDay(event)) laneHeights[lane] = 28;
+    });
+    const laneOffsets = laneHeights.map((_, lane) => laneHeights.slice(0, lane).reduce((sum, height) => sum + height + 2, 0));
+
+    placedEvents.forEach(({ event, clippedStart, clippedEnd, lane }) => {
       const startColumn = addDays(firstVisible, week * 7).getDay() + Math.round((fromKey(clippedStart) - fromKey(weekStartKey)) / 86400000) + 1;
       const endColumn = startColumn + Math.round((fromKey(clippedEnd) - fromKey(clippedStart)) / 86400000);
       const bar = document.createElement('span');
@@ -421,15 +432,30 @@ function renderEventBars(firstVisible, birthdayEvents = [], firstMetKey = null, 
       if (eventIsAllDay(event) && eventEnd(event) > weekEndKey) bar.classList.add('continues-after');
       bar.style.gridColumn = `${startColumn} / ${endColumn + 1}`;
       bar.style.gridRow = String(week + 1);
+      bar.style.setProperty('--event-lane-offset', `${laneOffsets[lane]}px`);
       const eventText = eventIsAllDay(event) ? event.title : `${event.time} ${event.title}`;
       if (event.authorLabel) {
         const author = document.createElement('span');
         author.className = 'calendar-event-author';
         author.textContent = event.authorBadge;
+        bar.append(author);
+      }
+      if (!eventIsAllDay(event)) {
+        const timedCopy = document.createElement('span');
+        timedCopy.className = 'calendar-event-timed-copy';
+        const time = document.createElement('span');
+        time.className = 'calendar-event-time';
+        time.textContent = event.time;
+        const title = document.createElement('span');
+        title.className = 'calendar-event-title';
+        title.textContent = event.title;
+        timedCopy.append(title, time);
+        bar.append(timedCopy);
+      } else if (event.authorLabel) {
         const label = document.createElement('span');
         label.className = 'calendar-event-text';
         label.textContent = eventText;
-        bar.append(author, label);
+        bar.append(label);
       } else {
         bar.textContent = eventText;
       }
