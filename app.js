@@ -1,5 +1,6 @@
 const calendarGrid = document.querySelector('#calendarGrid');
 const calendarViewport = document.querySelector('#calendarViewport');
+const appShell = document.querySelector('.app-shell');
 const monthTitle = document.querySelector('#monthTitle');
 const selectedDateLabel = document.querySelector('#selectedDateLabel');
 const agendaTitle = document.querySelector('#agendaTitle');
@@ -83,6 +84,18 @@ let activeSharedCalendarId = null;
 let editingEvent = null;
 const holidaysByYear = new Map();
 const maxCalendarEventLanes = 5;
+
+function usesInlineAgenda() {
+  return window.matchMedia('(max-width: 480px)').matches;
+}
+
+function calendarIsCompact() {
+  return usesInlineAgenda() && appShell.classList.contains('is-agenda-open');
+}
+
+function visibleCalendarEventLanes() {
+  return calendarIsCompact() ? 3 : maxCalendarEventLanes;
+}
 
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -416,12 +429,14 @@ function closeAnniversarySheet() {
 
 function renderEventBars(firstVisible, automaticEvents = [], firstMetKey = null, weekCount = 6) {
   const previousLaneByEvent = new Map();
+  const compact = calendarIsCompact();
+  const laneLimit = visibleCalendarEventLanes();
 
   for (let week = 0; week < weekCount; week += 1) {
     const weekStartKey = toKey(addDays(firstVisible, week * 7));
     const weekEndKey = toKey(addDays(firstVisible, week * 7 + 6));
     const weekHasFirstMet = firstMetKey && firstMetKey >= weekStartKey && firstMetKey <= weekEndKey;
-    const laneEnds = Array(maxCalendarEventLanes).fill(null);
+    const laneEnds = Array(laneLimit).fill(null);
     const holidayEvents = Array.from({ length: 7 }, (_, day) => {
       const date = addDays(firstVisible, week * 7 + day);
       const key = toKey(date);
@@ -464,13 +479,13 @@ function renderEventBars(firstVisible, automaticEvents = [], firstMetKey = null,
 
     const positionedEvents = [];
     placedEvents.forEach((placedEvent) => {
-      const height = eventUsesTwoLineTimeBar(placedEvent.event) ? 28 : 15;
+      const height = compact ? 6 : eventUsesTwoLineTimeBar(placedEvent.event) ? 28 : 15;
       const blockers = positionedEvents
         .filter((other) => other.clippedStart <= placedEvent.clippedEnd && other.clippedEnd >= placedEvent.clippedStart)
         .sort((a, b) => a.offset - b.offset);
       let offset = 0;
       blockers.forEach((blocker) => {
-        const gap = eventUsesTwoLineTimeBar(placedEvent.event) || eventUsesTwoLineTimeBar(blocker.event) ? 2 : 0;
+        const gap = compact ? 1 : eventUsesTwoLineTimeBar(placedEvent.event) || eventUsesTwoLineTimeBar(blocker.event) ? 2 : 0;
         if (offset + height + gap > blocker.offset) offset = Math.max(offset, blocker.offset + blocker.height + gap);
       });
       positionedEvents.push({ ...placedEvent, height, offset });
@@ -608,10 +623,11 @@ function renderCalendar() {
     }
     button.append(number);
     const visibleItemCount = dayEvents.length + (holiday ? 1 : 0);
-    if (visibleItemCount > maxCalendarEventLanes) {
+    const laneLimit = visibleCalendarEventLanes();
+    if (visibleItemCount > laneLimit) {
       const overflow = document.createElement('span');
       overflow.className = 'day-overflow-count';
-      overflow.textContent = `+${visibleItemCount - maxCalendarEventLanes}`;
+      overflow.textContent = `+${visibleItemCount - laneLimit}`;
       overflow.title = `공휴일을 포함해 이 날짜에 표시할 항목이 ${visibleItemCount}개 있어요`;
       button.append(overflow);
     }
@@ -693,13 +709,22 @@ function render() {
 
 function openAgendaSheet() {
   renderAgenda();
-  agendaBackdrop.hidden = false;
+  const inline = usesInlineAgenda();
+  appShell.classList.add('is-agenda-open');
+  agendaBackdrop.hidden = inline;
   agendaPanel.classList.add('is-open');
+  if (inline) {
+    renderCalendar();
+    return;
+  }
   setTimeout(() => agendaPanel.focus({ preventScroll: true }), 100);
 }
 
 function closeAgendaSheet() {
+  const inline = usesInlineAgenda();
+  appShell.classList.remove('is-agenda-open');
   agendaPanel.classList.remove('is-open');
+  if (inline) renderCalendar();
   setTimeout(() => {
     if (!agendaPanel.classList.contains('is-open')) agendaBackdrop.hidden = true;
   }, 220);
@@ -1155,6 +1180,11 @@ function endCalendarGesture(x, y) {
     setTimeout(() => selectDate(tappedDate), 80);
     return;
   }
+  if (calendarIsCompact() && deltaY > 36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
+    ignoreClickUntil = Date.now() + 350;
+    closeAgendaSheet();
+    return;
+  }
   if (deltaY < -36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
     ignoreClickUntil = Date.now() + 350;
     openAgendaSheet();
@@ -1220,6 +1250,11 @@ if (window.PointerEvent) {
     const deltaX = touch.clientX - touchStart.x;
     const deltaY = touch.clientY - touchStart.y;
     touchSwipeStart = null;
+    if (calendarIsCompact() && deltaY > 36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
+      ignoreClickUntil = Date.now() + 350;
+      closeAgendaSheet();
+      return;
+    }
     if (deltaY < -36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
       ignoreClickUntil = Date.now() + 350;
       if (!agendaPanel.classList.contains('is-open')) openAgendaSheet();
