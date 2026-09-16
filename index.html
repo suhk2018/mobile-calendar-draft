@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=38" />
-    <link rel="icon" href="icon.svg?v=38" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=38" />
-    <link rel="stylesheet" href="styles.css?v=38" />
+    <link rel="manifest" href="manifest.webmanifest?v=39" />
+    <link rel="icon" href="icon.svg?v=39" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=39" />
+    <link rel="stylesheet" href="styles.css?v=39" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -72,10 +72,17 @@
         </div>
         <button class="meeting-day-toggle" id="meetingDayToggle" type="button" hidden aria-pressed="false">
           <span class="meeting-toggle-icon" aria-hidden="true">♥</span>
-          <span class="meeting-toggle-copy"><strong id="meetingToggleTitle">만난 날로 기록</strong><small>일정 대신 달력에 하트로 남겨요</small></span>
+          <span class="meeting-toggle-copy"><strong id="meetingToggleTitle">만난 날로 기록</strong><small id="meetingToggleDescription">일정 대신 달력에 하트로 남겨요</small></span>
           <span class="meeting-toggle-state" id="meetingToggleState">체크</span>
         </button>
         <p class="form-error meeting-day-error" id="meetingDayError" role="alert" hidden></p>
+        <section class="meeting-places" id="meetingPlaces" hidden aria-labelledby="meetingPlacesTitle">
+          <div class="meeting-places-heading">
+            <div><strong id="meetingPlacesTitle">오늘 어디 갔나요?</strong><span>함께한 장소를 차례대로 남겨요</span></div>
+            <button id="addMeetingPlace" type="button">장소 추가</button>
+          </div>
+          <div class="meeting-place-list" id="meetingPlaceList"></div>
+        </section>
         <div class="event-list" id="eventList" aria-live="polite"></div>
         <button class="agenda-add-button" id="addEventButton" type="button"><span id="agendaAddLabel">일정 추가</span><strong aria-hidden="true">＋</strong></button>
       </section>
@@ -138,6 +145,42 @@
           </fieldset>
           <button class="save-button" type="submit">일정 저장</button>
           <button class="composer-delete-button" id="deleteEventButton" type="button" hidden>이 일정 삭제</button>
+        </form>
+      </section>
+
+      <div class="composer-backdrop" id="placeBackdrop" hidden></div>
+      <section class="composer place-sheet" id="placeSheet" aria-labelledby="placeSheetTitle" aria-modal="true" role="dialog" tabindex="-1">
+        <div class="composer-heading">
+          <div>
+            <p class="eyebrow">OUR PLACE</p>
+            <h2 id="placeSheetTitle">장소 추가</h2>
+          </div>
+          <button class="close-composer" id="closePlaceSheet" type="button" aria-label="장소 입력 닫기">×</button>
+        </div>
+        <form id="placeForm">
+          <label>
+            장소 이름
+            <input id="placeName" name="name" type="text" maxlength="80" required placeholder="예: 함께 갔던 카페" />
+          </label>
+          <label>
+            주소 <span class="optional-label">선택</span>
+            <input id="placeAddress" name="address" type="text" maxlength="200" placeholder="지도에서 선택하면 자동으로 입력돼요" />
+          </label>
+          <div class="place-map-tools">
+            <button class="secondary-button" id="useCurrentLocation" type="button">현재 위치 사용</button>
+            <span id="placeCoordinateLabel">지도에서 위치를 선택할 수 있어요</span>
+          </div>
+          <div class="place-map" id="placeMap" aria-label="장소 위치 선택 지도"></div>
+          <p class="place-map-notice" id="placeMapNotice" hidden></p>
+          <input id="placeLatitude" name="latitude" type="hidden" />
+          <input id="placeLongitude" name="longitude" type="hidden" />
+          <label>
+            장소 메모 <span class="optional-label">선택</span>
+            <textarea id="placeMemo" name="memo" maxlength="300" rows="3" placeholder="무엇을 했는지 간단히 남겨보세요"></textarea>
+          </label>
+          <p class="form-error" id="placeFormError" role="alert" hidden></p>
+          <button class="save-button" type="submit">장소 저장</button>
+          <button class="composer-delete-button" id="deleteMeetingPlace" type="button" hidden>이 장소 삭제</button>
         </form>
       </section>
 
@@ -271,8 +314,9 @@
       </button>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=38"></script>
-    <script src="shared-calendar.js?v=38"></script>
-    <script src="app.js?v=38"></script>
+    <script src="supabase-config.js?v=39"></script>
+    <script src="map-config.js?v=39"></script>
+    <script src="shared-calendar.js?v=39"></script>
+    <script src="app.js?v=39"></script>
   </body>
 </html>

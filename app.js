@@ -13,8 +13,12 @@ const closeAgendaButton = document.querySelector('#closeAgenda');
 const eventList = document.querySelector('#eventList');
 const meetingDayToggle = document.querySelector('#meetingDayToggle');
 const meetingToggleTitle = document.querySelector('#meetingToggleTitle');
+const meetingToggleDescription = document.querySelector('#meetingToggleDescription');
 const meetingToggleState = document.querySelector('#meetingToggleState');
 const meetingDayError = document.querySelector('#meetingDayError');
+const meetingPlaces = document.querySelector('#meetingPlaces');
+const meetingPlaceList = document.querySelector('#meetingPlaceList');
+const addMeetingPlaceButton = document.querySelector('#addMeetingPlace');
 const eventForm = document.querySelector('#eventForm');
 const eventStartDate = document.querySelector('#eventStartDate');
 const eventEndDate = document.querySelector('#eventEndDate');
@@ -56,11 +60,26 @@ const birthdayForm = document.querySelector('#birthdayForm');
 const birthdayInput = document.querySelector('#birthdayInput');
 const birthdayError = document.querySelector('#birthdayError');
 const calendarToast = document.querySelector('#calendarToast');
+const placeBackdrop = document.querySelector('#placeBackdrop');
+const placeSheet = document.querySelector('#placeSheet');
+const closePlaceSheetButton = document.querySelector('#closePlaceSheet');
+const placeSheetTitle = document.querySelector('#placeSheetTitle');
+const placeForm = document.querySelector('#placeForm');
+const placeName = document.querySelector('#placeName');
+const placeAddress = document.querySelector('#placeAddress');
+const placeMemo = document.querySelector('#placeMemo');
+const placeLatitude = document.querySelector('#placeLatitude');
+const placeLongitude = document.querySelector('#placeLongitude');
+const placeMap = document.querySelector('#placeMap');
+const placeMapNotice = document.querySelector('#placeMapNotice');
+const placeCoordinateLabel = document.querySelector('#placeCoordinateLabel');
+const useCurrentLocationButton = document.querySelector('#useCurrentLocation');
+const placeFormError = document.querySelector('#placeFormError');
+const deleteMeetingPlaceButton = document.querySelector('#deleteMeetingPlace');
 
 const storageKey = 'green-calendar-events-v1';
 const themeStorageKey = 'calendar-theme-v1';
 const calendarScopeStorageKey = 'calendar-scope-v1';
-const meetingDayMemo = 'couple-calendar:meeting-day:v1';
 const today = startOfDay(new Date());
 let cursor = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedStartDate = new Date(today);
@@ -78,10 +97,16 @@ let calendarScope = 'personal';
 let preferredCalendarScope = localStorage.getItem(calendarScopeStorageKey) === 'shared' ? 'shared' : 'personal';
 let personalEvents = loadEvents();
 let sharedEvents = [];
+let sharedMeetingDays = [];
+let meetingTablesReady = true;
 let events = personalEvents;
 let sharedCalendars = [];
 let activeSharedCalendarId = null;
 let editingEvent = null;
+let editingMeetingPlace = null;
+let placeMapInstance = null;
+let placeMapMarker = null;
+let naverMapLoader = null;
 const holidaysByYear = new Map();
 const maxCalendarEventLanes = 5;
 
@@ -166,6 +191,11 @@ function eventCoversDate(event, key) {
 
 function eventOverlapsRange(event, startKey, endKey) {
   return eventStart(event) <= endKey && eventEnd(event) >= startKey;
+}
+
+function meetingDayForDate(dateKey) {
+  if (calendarScope !== 'shared') return null;
+  return sharedMeetingDays.find((day) => day.date === dateKey) || null;
 }
 
 function loadEvents() {
@@ -576,7 +606,7 @@ function renderCalendar() {
     const date = new Date(firstVisible.getFullYear(), firstVisible.getMonth(), firstVisible.getDate() + index);
     const key = toKey(date);
     const dayEvents = [...displayEvents, ...automaticEvents].filter((event) => eventCoversDate(event, key));
-    const isMeetingDay = events.some((event) => event.isMeetingDay && eventStart(event) === key);
+    const isMeetingDay = Boolean(meetingDayForDate(key));
     const holiday = getHoliday(key);
     const colorEvent = [...dayEvents].sort((a, b) => Number(Boolean(a.isBirthday || a.isAnniversary)) - Number(Boolean(b.isBirthday || b.isAnniversary)) || compareEventsByDisplay(a, b))[0];
     return { date, key, dayEvents, holiday, colorEvent, isMeetingDay };
@@ -646,6 +676,59 @@ function renderCalendar() {
   renderEventBars(firstVisible, automaticEvents, firstMetKey, weekCount);
 }
 
+function renderMeetingPlaces(meetingDay, canCheckMeetingDay) {
+  const places = meetingDay?.places || [];
+  meetingPlaces.hidden = !canCheckMeetingDay || !meetingDay;
+  meetingPlaceList.replaceChildren();
+  if (!meetingDay || !canCheckMeetingDay) return;
+  if (!meetingTablesReady) {
+    const migrationNotice = document.createElement('p');
+    migrationNotice.className = 'meeting-place-empty';
+    migrationNotice.textContent = '장소 기록을 사용하려면 Supabase에서 장소 마이그레이션을 먼저 실행해 주세요.';
+    meetingPlaceList.append(migrationNotice);
+    addMeetingPlaceButton.disabled = true;
+    return;
+  }
+  addMeetingPlaceButton.disabled = false;
+  if (places.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'meeting-place-empty';
+    empty.textContent = '아직 기록한 장소가 없어요. 함께 간 곳을 남겨보세요.';
+    meetingPlaceList.append(empty);
+    return;
+  }
+  places.forEach((place, index) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'meeting-place-item';
+    item.setAttribute('aria-label', `${place.name} 장소 수정`);
+    const order = document.createElement('span');
+    order.className = 'meeting-place-order';
+    order.textContent = String(index + 1);
+    const copy = document.createElement('span');
+    copy.className = 'meeting-place-copy';
+    const name = document.createElement('strong');
+    name.textContent = place.name;
+    copy.append(name);
+    if (place.address) {
+      const address = document.createElement('span');
+      address.textContent = place.address;
+      copy.append(address);
+    }
+    if (place.memo) {
+      const memo = document.createElement('small');
+      memo.textContent = place.memo;
+      copy.append(memo);
+    }
+    const edit = document.createElement('span');
+    edit.className = 'meeting-place-edit';
+    edit.textContent = '수정';
+    item.append(order, copy, edit);
+    item.addEventListener('click', () => openPlaceSheet(place));
+    meetingPlaceList.append(item);
+  });
+}
+
 function renderAgenda() {
   const startKey = toKey(selectedStartDate);
   const endKey = toKey(selectedEndDate);
@@ -656,7 +739,7 @@ function renderAgenda() {
   ]
     .filter((event) => eventOverlapsRange(event, startKey, endKey))
     .sort(compareEventsByDisplay);
-  const meetingDay = events.find((event) => event.isMeetingDay && eventStart(event) === startKey);
+  const meetingDay = meetingDayForDate(startKey);
   const canCheckMeetingDay = calendarScope === 'shared' && daysInSelection() === 1;
   selectedDateLabel.textContent = formatSelectedRange();
   agendaTitle.textContent = daysInSelection() > 1 ? '선택한 기간의 일정' : sameDay(selectedStartDate, today) ? '오늘의 일정' : '선택한 날짜의 일정';
@@ -666,8 +749,12 @@ function renderAgenda() {
   meetingDayToggle.classList.toggle('is-checked', Boolean(meetingDay));
   meetingDayToggle.setAttribute('aria-pressed', String(Boolean(meetingDay)));
   meetingToggleTitle.textContent = meetingDay ? `${formatShortDate(selectedStartDate)}에 만났어요` : '만난 날로 기록';
+  meetingToggleDescription.textContent = meetingDay
+    ? meetingDay.places?.length ? `함께 간 장소 ${meetingDay.places.length}곳을 기록했어요` : '어디를 갔는지도 함께 남겨보세요'
+    : '일정 대신 달력에 하트로 남겨요';
   meetingToggleState.textContent = meetingDay ? '완료' : '체크';
   meetingDayError.hidden = true;
+  renderMeetingPlaces(meetingDay, canCheckMeetingDay);
   eventList.replaceChildren();
 
   if (selectedEvents.length === 0) {
@@ -733,28 +820,14 @@ function closeAgendaSheet() {
 async function toggleMeetingDay() {
   if (calendarScope !== 'shared' || daysInSelection() !== 1 || meetingDayToggle.disabled) return;
   const dateKey = toKey(selectedStartDate);
-  const existing = events.find((event) => event.isMeetingDay && eventStart(event) === dateKey);
+  const existing = meetingDayForDate(dateKey);
+  if (existing?.places?.length && !window.confirm('만난 날 체크를 해제하면 이 날짜에 저장한 장소도 함께 삭제돼요. 해제할까요?')) return;
   meetingDayError.hidden = true;
   meetingDayToggle.disabled = true;
   meetingToggleState.textContent = existing ? '해제 중' : '기록 중';
   let changed = false;
   try {
-    if (existing) {
-      await window.sharedCalendar.deleteEvent(existing.id);
-    } else {
-      await window.sharedCalendar.upsertEvent({
-        id: `meeting-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        date: dateKey,
-        startDate: dateKey,
-        endDate: dateKey,
-        allDay: true,
-        time: '',
-        title: '함께한 날',
-        memo: meetingDayMemo,
-        color: 'pink',
-        isMeetingDay: true,
-      });
-    }
+    await window.sharedCalendar.setMeetingDay(dateKey, !existing);
     changed = true;
   } catch (error) {
     meetingDayError.textContent = '만난 날을 저장하지 못했어요. 인터넷 연결을 확인해 주세요.';
@@ -904,6 +977,150 @@ function updateTimeReadable() {
   eventTimeReadable.textContent = `${hour % 12 || 12}시 ${minute}분`;
 }
 
+function naverMapClientId() {
+  return String(window.NAVER_MAP_CONFIG?.clientId || '').trim();
+}
+
+function loadNaverMap() {
+  if (window.naver?.maps) return Promise.resolve(window.naver.maps);
+  if (naverMapLoader) return naverMapLoader;
+  const clientId = naverMapClientId();
+  if (!clientId) return Promise.reject(new Error('NAVER_MAP_NOT_CONFIGURED'));
+  naverMapLoader = new Promise((resolve, reject) => {
+    const callbackName = `initCoupleCalendarMap${Date.now()}`;
+    const script = document.createElement('script');
+    const timeout = window.setTimeout(() => reject(new Error('NAVER_MAP_LOAD_TIMEOUT')), 12000);
+    window[callbackName] = () => {
+      window.clearTimeout(timeout);
+      delete window[callbackName];
+      resolve(window.naver.maps);
+    };
+    window.navermap_authFailure = () => {
+      window.clearTimeout(timeout);
+      reject(new Error('NAVER_MAP_AUTH_FAILED'));
+    };
+    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}&submodules=geocoder&callback=${callbackName}`;
+    script.async = true;
+    script.onerror = () => {
+      window.clearTimeout(timeout);
+      reject(new Error('NAVER_MAP_LOAD_FAILED'));
+    };
+    document.head.append(script);
+  }).catch((error) => {
+    naverMapLoader = null;
+    throw error;
+  });
+  return naverMapLoader;
+}
+
+function placeCoordinates() {
+  const latitude = Number(placeLatitude.value);
+  const longitude = Number(placeLongitude.value);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) && placeLatitude.value && placeLongitude.value
+    ? { latitude, longitude }
+    : null;
+}
+
+function updatePlaceCoordinateLabel() {
+  const coordinates = placeCoordinates();
+  placeCoordinateLabel.textContent = coordinates
+    ? `위치 ${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}`
+    : '지도에서 위치를 선택할 수 있어요';
+}
+
+function reverseGeocodePlace(latitude, longitude) {
+  if (!window.naver?.maps?.Service) return;
+  const coords = new window.naver.maps.LatLng(latitude, longitude);
+  window.naver.maps.Service.reverseGeocode({ coords }, (status, response) => {
+    if (status !== window.naver.maps.Service.Status.OK || !response?.v2?.address) return;
+    const address = response.v2.address.roadAddress || response.v2.address.jibunAddress || '';
+    if (address) placeAddress.value = address;
+  });
+}
+
+function setPlacePosition(latitude, longitude, shouldResolveAddress = false) {
+  placeLatitude.value = String(latitude);
+  placeLongitude.value = String(longitude);
+  updatePlaceCoordinateLabel();
+  if (placeMapInstance && window.naver?.maps) {
+    const position = new window.naver.maps.LatLng(latitude, longitude);
+    if (!placeMapMarker) placeMapMarker = new window.naver.maps.Marker({ map: placeMapInstance, position });
+    else placeMapMarker.setPosition(position);
+    placeMapInstance.panTo(position);
+    if (placeMapInstance.getZoom() < 15) placeMapInstance.setZoom(15);
+  }
+  if (shouldResolveAddress) reverseGeocodePlace(latitude, longitude);
+}
+
+async function initializePlaceMap() {
+  placeMapNotice.hidden = true;
+  useCurrentLocationButton.disabled = false;
+  try {
+    await loadNaverMap();
+  } catch (error) {
+    placeMap.classList.remove('is-ready');
+    useCurrentLocationButton.disabled = true;
+    placeMapNotice.textContent = error.message === 'NAVER_MAP_NOT_CONFIGURED'
+      ? '네이버 지도 Client ID를 연결하면 지도에서 위치를 고를 수 있어요. 지금은 장소 이름과 주소를 직접 저장할 수 있습니다.'
+      : '네이버 지도를 불러오지 못했어요. 등록된 웹 서비스 URL과 Client ID를 확인해 주세요.';
+    placeMapNotice.hidden = false;
+    return;
+  }
+  placeMap.classList.add('is-ready');
+  const coordinates = placeCoordinates();
+  const center = coordinates || { latitude: 37.5666103, longitude: 126.9783882 };
+  placeMapInstance = new window.naver.maps.Map(placeMap, {
+    center: new window.naver.maps.LatLng(center.latitude, center.longitude),
+    zoom: coordinates ? 16 : 12,
+    zoomControl: true,
+  });
+  placeMapMarker = null;
+  if (coordinates) setPlacePosition(coordinates.latitude, coordinates.longitude);
+  window.naver.maps.Event.addListener(placeMapInstance, 'click', (event) => {
+    const latitude = typeof event.coord.lat === 'function' ? event.coord.lat() : event.coord.y;
+    const longitude = typeof event.coord.lng === 'function' ? event.coord.lng() : event.coord.x;
+    setPlacePosition(latitude, longitude, true);
+  });
+}
+
+function openPlaceSheet(place = null) {
+  editingMeetingPlace = place;
+  placeForm.reset();
+  placeName.value = place?.name || '';
+  placeAddress.value = place?.address || '';
+  placeMemo.value = place?.memo || '';
+  placeLatitude.value = Number.isFinite(place?.latitude) ? String(place.latitude) : '';
+  placeLongitude.value = Number.isFinite(place?.longitude) ? String(place.longitude) : '';
+  placeSheetTitle.textContent = place ? '장소 수정' : '장소 추가';
+  placeForm.querySelector('.save-button').textContent = place ? '수정 내용 저장' : '장소 저장';
+  deleteMeetingPlaceButton.hidden = !place;
+  placeFormError.hidden = true;
+  placeMapNotice.hidden = true;
+  placeMap.replaceChildren();
+  placeMap.classList.remove('is-ready');
+  updatePlaceCoordinateLabel();
+  placeBackdrop.hidden = false;
+  placeSheet.classList.add('is-open');
+  setTimeout(() => {
+    placeSheet.focus({ preventScroll: true });
+    void initializePlaceMap();
+  }, 180);
+}
+
+function closePlaceSheet() {
+  placeSheet.classList.remove('is-open');
+  editingMeetingPlace = null;
+  placeMapInstance = null;
+  placeMapMarker = null;
+  setTimeout(() => {
+    if (!placeSheet.classList.contains('is-open')) {
+      placeBackdrop.hidden = true;
+      placeMap.replaceChildren();
+      placeMap.classList.remove('is-ready');
+    }
+  }, 220);
+}
+
 function openComposer(eventToEdit = null) {
   editingEvent = eventToEdit;
   eventForm.reset();
@@ -950,9 +1167,80 @@ document.querySelector('#nextMonth').addEventListener('click', () => changeMonth
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
 addEventButton.addEventListener('click', () => openComposer());
 meetingDayToggle.addEventListener('click', toggleMeetingDay);
+addMeetingPlaceButton.addEventListener('click', () => openPlaceSheet());
 closeAgendaButton.addEventListener('click', closeAgendaSheet);
 agendaBackdrop.addEventListener('click', closeAgendaSheet);
 composerBackdrop.addEventListener('click', closeComposer);
+closePlaceSheetButton.addEventListener('click', closePlaceSheet);
+placeBackdrop.addEventListener('click', closePlaceSheet);
+useCurrentLocationButton.addEventListener('click', () => {
+  if (!navigator.geolocation) {
+    placeFormError.textContent = '이 기기에서는 현재 위치를 사용할 수 없어요.';
+    placeFormError.hidden = false;
+    return;
+  }
+  useCurrentLocationButton.disabled = true;
+  useCurrentLocationButton.textContent = '위치 확인 중';
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      setPlacePosition(position.coords.latitude, position.coords.longitude, true);
+      useCurrentLocationButton.disabled = false;
+      useCurrentLocationButton.textContent = '현재 위치 사용';
+    },
+    () => {
+      placeFormError.textContent = '현재 위치를 확인하지 못했어요. 위치 권한을 확인하거나 지도에서 직접 선택해 주세요.';
+      placeFormError.hidden = false;
+      useCurrentLocationButton.disabled = false;
+      useCurrentLocationButton.textContent = '현재 위치 사용';
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+  );
+});
+placeForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const name = placeName.value.trim();
+  if (!name) return;
+  const coordinates = placeCoordinates();
+  const saveButton = placeForm.querySelector('.save-button');
+  saveButton.disabled = true;
+  placeFormError.hidden = true;
+  try {
+    await window.sharedCalendar.upsertMeetingPlace({
+      id: editingMeetingPlace?.id,
+      date: toKey(selectedStartDate),
+      name,
+      address: placeAddress.value.trim(),
+      memo: placeMemo.value.trim(),
+      latitude: coordinates?.latitude ?? null,
+      longitude: coordinates?.longitude ?? null,
+      order: editingMeetingPlace?.order,
+    });
+    closePlaceSheet();
+    render();
+  } catch (error) {
+    placeFormError.textContent = error.message || '장소를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.';
+    placeFormError.hidden = false;
+    console.error(error);
+  } finally {
+    saveButton.disabled = false;
+  }
+});
+deleteMeetingPlaceButton.addEventListener('click', async () => {
+  if (!editingMeetingPlace || !window.confirm(`'${editingMeetingPlace.name}' 장소를 삭제할까요?`)) return;
+  deleteMeetingPlaceButton.disabled = true;
+  placeFormError.hidden = true;
+  try {
+    await window.sharedCalendar.deleteMeetingPlace(editingMeetingPlace.id);
+    closePlaceSheet();
+    render();
+  } catch (error) {
+    placeFormError.textContent = error.message || '장소를 삭제하지 못했어요. 잠시 후 다시 시도해 주세요.';
+    placeFormError.hidden = false;
+    console.error(error);
+  } finally {
+    deleteMeetingPlaceButton.disabled = false;
+  }
+});
 deleteEventButton.addEventListener('click', async () => {
   if (!editingEvent || !window.confirm(`'${editingEvent.title}' 일정을 삭제할까요?`)) return;
   deleteEventButton.disabled = true;
@@ -1372,9 +1660,11 @@ eventForm.addEventListener('submit', async (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && composer.classList.contains('is-open')) closeComposer();
-  if (event.key === 'Escape' && anniversarySheet.classList.contains('is-open')) closeAnniversarySheet();
-  if (event.key === 'Escape' && agendaPanel.classList.contains('is-open')) closeAgendaSheet();
+  if (event.key !== 'Escape') return;
+  if (placeSheet.classList.contains('is-open')) return closePlaceSheet();
+  if (composer.classList.contains('is-open')) return closeComposer();
+  if (anniversarySheet.classList.contains('is-open')) return closeAnniversarySheet();
+  if (agendaPanel.classList.contains('is-open')) closeAgendaSheet();
 });
 
 applyTheme(document.documentElement.dataset.theme || 'light');
@@ -1387,6 +1677,11 @@ Promise.resolve(window.sharedCalendar?.init({
       events = nextSharedEvents;
       render();
     }
+  },
+  onMeetingDays(nextMeetingDays, tablesReady) {
+    sharedMeetingDays = nextMeetingDays;
+    meetingTablesReady = tablesReady;
+    if (calendarScope === 'shared') render();
   },
   onConnection(connected) {
     if (!connected && calendarScope === 'shared') setCalendarScope('personal');

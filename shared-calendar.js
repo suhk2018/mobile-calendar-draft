@@ -11,6 +11,9 @@
   let connectionHandler = () => {};
   let calendarsHandler = () => {};
   let calendarActivatedHandler = () => {};
+  let meetingDaysHandler = () => {};
+  let meetingDays = [];
+  let meetingTablesAvailable = true;
   const byId = (id) => document.getElementById(id);
   const ui = {};
 
@@ -18,6 +21,39 @@
   function mapEvent(row) {
     const isMine = row.created_by === session?.user?.id;
     return { id: row.id, date: row.start_date, startDate: row.start_date, endDate: row.end_date, allDay: !row.event_time, time: row.event_time?.slice(0, 5) || '', title: row.title, memo: row.memo || '', color: row.color, authorId: row.created_by, authorLabel: isMine ? '나' : '상대방', authorBadge: isMine ? '나' : '상', isMeetingDay: row.memo === meetingDayMemo };
+  }
+
+  function mapMeetingPlace(row) {
+    return {
+      id: row.id,
+      meetingDayId: row.meeting_day_id,
+      name: row.place_name,
+      address: row.address || '',
+      latitude: row.latitude,
+      longitude: row.longitude,
+      memo: row.memo || '',
+      order: row.visit_order || 0,
+      authorId: row.created_by,
+    };
+  }
+
+  function mapMeetingDay(row) {
+    return {
+      id: row.id,
+      date: row.meeting_date,
+      authorId: row.created_by,
+      places: (row.meeting_places || []).map(mapMeetingPlace).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, 'ko')),
+    };
+  }
+
+  function legacyMeetingDays(rows) {
+    return rows
+      .filter((row) => row.memo === meetingDayMemo)
+      .map((row) => ({ id: row.id, date: row.start_date, authorId: row.created_by, places: [], legacy: true }));
+  }
+
+  function meetingTableMissing(error) {
+    return ['42P01', 'PGRST200', 'PGRST205'].includes(error?.code) || /meeting_days|meeting_places/i.test(error?.message || '');
   }
 
   function fromDateKey(key) {
@@ -41,6 +77,35 @@
     const { data, error } = await client.from('events').select('*').eq('couple_id', activeCalendar.id).order('start_date');
     if (error) throw error;
     eventHandler(data.map(mapEvent));
+    if (!meetingTablesAvailable) {
+      meetingDays = legacyMeetingDays(data);
+      meetingDaysHandler(meetingDays, false);
+    }
+  }
+
+  async function loadMeetingDays() {
+    if (!activeCalendar) {
+      meetingDays = [];
+      meetingDaysHandler([], meetingTablesAvailable);
+      return;
+    }
+    const { data, error } = await client
+      .from('meeting_days')
+      .select('id, couple_id, meeting_date, created_by, meeting_places(id, meeting_day_id, place_name, address, latitude, longitude, memo, visit_order, created_by)')
+      .eq('couple_id', activeCalendar.id)
+      .order('meeting_date');
+    if (error) {
+      if (!meetingTableMissing(error)) throw error;
+      meetingTablesAvailable = false;
+      const { data: legacyRows, error: legacyError } = await client.from('events').select('*').eq('couple_id', activeCalendar.id).eq('memo', meetingDayMemo).order('start_date');
+      if (legacyError) throw legacyError;
+      meetingDays = legacyMeetingDays(legacyRows);
+      meetingDaysHandler(meetingDays, false);
+      return;
+    }
+    meetingTablesAvailable = true;
+    meetingDays = data.map(mapMeetingDay);
+    meetingDaysHandler(meetingDays, true);
   }
 
   function subscribe() {
@@ -48,7 +113,13 @@
     channel = null;
     if (!activeCalendar) return;
     channel = client.channel(`events:${activeCalendar.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `couple_id=eq.${activeCalendar.id}` }, loadEvents)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `couple_id=eq.${activeCalendar.id}` }, loadEvents);
+    if (meetingTablesAvailable) {
+      channel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_days', filter: `couple_id=eq.${activeCalendar.id}` }, loadMeetingDays)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_places', filter: `couple_id=eq.${activeCalendar.id}` }, loadMeetingDays);
+    }
+    channel
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'couples' }, (payload) => {
         if (!calendars.some((calendar) => calendar.id === payload.new.id)) return;
         calendars = calendars.map((calendar) => calendar.id === payload.new.id ? { ...calendar, ...payload.new } : calendar);
@@ -69,6 +140,7 @@
     calendarsHandler(calendars, activeCalendar?.id || null);
     renderAccount();
     await loadEvents();
+    await loadMeetingDays();
     subscribe();
   }
 
@@ -99,6 +171,7 @@
     renderAccount();
     calendarsHandler(calendars, activeCalendar?.id || null);
     await loadEvents();
+    await loadMeetingDays();
     subscribe();
   }
 
@@ -347,11 +420,12 @@
     }
   }
 
-  async function init({ onEvents, onConnection, onCalendars, onCalendarActivated }) {
+  async function init({ onEvents, onConnection, onCalendars, onCalendarActivated, onMeetingDays }) {
     eventHandler = onEvents;
     connectionHandler = onConnection || (() => {});
     calendarsHandler = onCalendars || (() => {});
     calendarActivatedHandler = onCalendarActivated || (() => {});
+    meetingDaysHandler = onMeetingDays || (() => {});
     ['accountButton', 'accountBackdrop', 'accountSheet', 'closeAccount', 'connectionNotice', 'signedOutView', 'signedInView', 'authForm', 'authError', 'signUpButton', 'accountEmail', 'signOutButton', 'coupleConnectedView', 'coupleSetupView', 'coupleCount', 'coupleList', 'createCoupleForm', 'joinCoupleForm', 'coupleError'].forEach((id) => { ui[id] = byId(id); });
     ui.accountButton.addEventListener('click', openSheet);
     ui.closeAccount.addEventListener('click', closeSheet);
@@ -420,6 +494,79 @@
     return true;
   }
 
+  async function setMeetingDay(date, enabled) {
+    if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
+    const existing = meetingDays.find((day) => day.date === date);
+    if (!meetingTablesAvailable) {
+      if (enabled && !existing) {
+        await upsertEvent({
+          id: `meeting-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          startDate: date,
+          endDate: date,
+          allDay: true,
+          time: '',
+          title: '함께한 날',
+          memo: meetingDayMemo,
+          color: 'pink',
+        });
+      } else if (!enabled && existing) {
+        await deleteEvent(existing.id);
+      }
+      await loadMeetingDays();
+      return true;
+    }
+    if (enabled && !existing) {
+      const { error } = await client.from('meeting_days').insert({ couple_id: activeCalendar.id, meeting_date: date, created_by: session.user.id });
+      if (error && error.code !== '23505') throw error;
+    } else if (!enabled && existing) {
+      const { error } = await client.from('meeting_days').delete().eq('id', existing.id).eq('couple_id', activeCalendar.id);
+      if (error) throw error;
+    }
+    await loadMeetingDays();
+    return true;
+  }
+
+  async function upsertMeetingPlace(place) {
+    if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
+    if (!meetingTablesAvailable) throw new Error('먼저 장소 기록용 Supabase 마이그레이션을 실행해 주세요.');
+    let meetingDay = meetingDays.find((day) => day.date === place.date);
+    if (!meetingDay) {
+      const { data, error } = await client
+        .from('meeting_days')
+        .insert({ couple_id: activeCalendar.id, meeting_date: place.date, created_by: session.user.id })
+        .select('id, couple_id, meeting_date, created_by')
+        .single();
+      if (error) throw error;
+      meetingDay = mapMeetingDay(data);
+    }
+    const values = {
+      couple_id: activeCalendar.id,
+      meeting_day_id: meetingDay.id,
+      place_name: place.name,
+      address: place.address || '',
+      latitude: Number.isFinite(place.latitude) ? place.latitude : null,
+      longitude: Number.isFinite(place.longitude) ? place.longitude : null,
+      memo: place.memo || '',
+      visit_order: place.order || Math.max(0, ...(meetingDay.places || []).map((item) => item.order || 0)) + 1,
+    };
+    const query = place.id
+      ? client.from('meeting_places').update(values).eq('id', place.id).eq('couple_id', activeCalendar.id)
+      : client.from('meeting_places').insert({ ...values, created_by: session.user.id });
+    const { error } = await query;
+    if (error) throw error;
+    await loadMeetingDays();
+    return true;
+  }
+
+  async function deleteMeetingPlace(id) {
+    if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
+    if (!meetingTablesAvailable) throw new Error('먼저 장소 기록용 Supabase 마이그레이션을 실행해 주세요.');
+    const { error } = await client.from('meeting_places').delete().eq('id', id).eq('couple_id', activeCalendar.id);
+    if (error) throw error;
+    await loadMeetingDays();
+    return true;
+  }
+
   async function setBirthday(birthday) {
     if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
     const { error } = await client.rpc('set_member_birthday', { target_couple: activeCalendar.id, new_birthday: birthday });
@@ -428,5 +575,17 @@
     return true;
   }
 
-  window.sharedCalendar = { init, upsertEvent, deleteEvent, setBirthday, selectCalendar, isConnected: () => Boolean(session && activeCalendar), openSettings: openSheet };
+  window.sharedCalendar = {
+    init,
+    upsertEvent,
+    deleteEvent,
+    setMeetingDay,
+    upsertMeetingPlace,
+    deleteMeetingPlace,
+    setBirthday,
+    selectCalendar,
+    meetingTablesReady: () => meetingTablesAvailable,
+    isConnected: () => Boolean(session && activeCalendar),
+    openSettings: openSheet,
+  };
 })();

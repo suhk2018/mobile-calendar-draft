@@ -38,6 +38,8 @@
 - 공유 캘린더 관리 화면에서 선택, 초대 코드 복사, 이름·만난 날 변경을 한눈에 처리
 - 공유 캘린더별 처음 만난 날을 달력에서 특별 표시
 - 공유 캘린더의 날짜를 눌러 만난 날을 체크하고 달력에 작은 하트로 표시
+- 만난 날마다 여러 방문 장소를 순서대로 기록하고 두 사람이 함께 확인
+- 장소 이름·주소·메모를 저장하고 네이버 지도에서 위치 또는 현재 위치 선택
 - 상단과 캘린더 목록에서 매일 자동 갱신되는 D-day 확인
 - 100일·1년 단위 기념일을 분홍색 종일 일정으로 달력에 자동 표시
 - 상단 D-day를 눌러 다가오는 기념일과 두 사람의 생일을 날짜순으로 함께 확인
@@ -64,8 +66,9 @@
 4. 선택한 날짜 아래의 **일정 추가** 버튼을 누르면 입력창이 열립니다. 일정 이름 칸을 누를 때만 키보드가 표시됩니다.
 5. 이미 등록된 일정은 달력의 일정 막대를 약 0.5초간 누른 뒤 원하는 날짜로 끌어서 옮길 수 있습니다.
 6. 공유 캘린더의 하루를 선택한 뒤 **만난 날로 기록**을 누르면 일정 막대 대신 날짜에 하트가 남습니다.
-7. 공유 설정에서 여러 공유 캘린더를 만들거나 초대 코드로 참여할 수 있습니다. 완료되면 해당 캘린더가 바로 열립니다.
-8. 왼쪽 목록 아래의 다크 모드 스위치로 화면 테마를 변경합니다.
+7. 체크한 만난 날의 **장소 추가**에서 장소 이름·주소·메모를 남깁니다. 네이버 지도 키가 연결되어 있으면 지도 또는 현재 위치로 좌표를 선택할 수 있습니다.
+8. 공유 설정에서 여러 공유 캘린더를 만들거나 초대 코드로 참여할 수 있습니다. 완료되면 해당 캘린더가 바로 열립니다.
+9. 왼쪽 목록 아래의 다크 모드 스위치로 화면 테마를 변경합니다.
 
 ## 프로젝트 구조
 
@@ -81,6 +84,7 @@ icon-192.png          Android 일반 아이콘
 icon-512.png          Android 고해상도 일반 아이콘
 icon-maskable-512.png Android 적응형(마스커블) 아이콘
 supabase-config.js     Supabase 프로젝트 연결 정보
+map-config.js          네이버 지도 Client ID 설정
 shared-calendar.js     로그인, 커플 연결, 공유 동기화
 supabase-schema.sql    데이터베이스 테이블과 보안 정책
 supabase-multi-calendar-migration.sql  기존 DB의 다중 캘린더 마이그레이션
@@ -89,6 +93,7 @@ supabase-rename-calendar-migration.sql 공유 캘린더 이름 변경 마이그�
 supabase-anniversary-migration.sql 처음 만난 날과 D-day 마이그레이션
 supabase-birthday-migration.sql 공유 캘린더 구성원의 생일 마이그레이션
 supabase-event-memo-migration.sql 공유 일정 메모 마이그레이션
+supabase-meeting-places-migration.sql 만난 날과 방문 장소 마이그레이션
 ```
 
 별도의 빌드 과정 없이 정적 파일을 GitHub Pages로 배포합니다. Supabase가 연결되지 않은 동안에는 일정이 브라우저의 `localStorage`에 저장됩니다.
@@ -102,6 +107,16 @@ supabase-event-memo-migration.sql 공유 일정 메모 마이그레이션
 5. 변경 내용을 GitHub에 푸시한 뒤 각자 회원가입합니다.
 6. 한 명이 공유 캘린더를 만들고, 표시된 초대 코드를 상대방에게 전달합니다.
 
-기존 Supabase 프로젝트를 사용 중이라면 SQL Editor에서 `supabase-multi-calendar-migration.sql`, `supabase-delete-calendar-migration.sql`, `supabase-rename-calendar-migration.sql`, `supabase-anniversary-migration.sql`, `supabase-birthday-migration.sql`, `supabase-event-memo-migration.sql`을 한 번씩 실행해야 다중 공유 캘린더, 추가 색상, 삭제·나가기, 이름 변경, D-day, 생일과 일정 메모 기능을 사용할 수 있습니다.
+기존 Supabase 프로젝트를 사용 중이라면 SQL Editor에서 `supabase-multi-calendar-migration.sql`, `supabase-delete-calendar-migration.sql`, `supabase-rename-calendar-migration.sql`, `supabase-anniversary-migration.sql`, `supabase-birthday-migration.sql`, `supabase-event-memo-migration.sql`, `supabase-meeting-places-migration.sql`을 한 번씩 실행해야 다중 공유 캘린더, 추가 색상, 삭제·나가기, 이름 변경, D-day, 생일, 일정 메모와 방문 장소 기능을 사용할 수 있습니다. 장소 마이그레이션은 기존 하트 기록을 새 만난 날 테이블로 자동 이전합니다.
+
+## 네이버 지도 연결
+
+1. NAVER Cloud Platform의 **Application Services > Maps > Application**에서 애플리케이션을 만듭니다.
+2. **Web Dynamic Map**, **Geocoding**, **Reverse Geocoding**을 선택합니다.
+3. Web 서비스 URL에 배포 주소 `https://suhk2018.github.io`와 로컬 확인용 `http://127.0.0.1`을 등록합니다. 포트와 경로는 입력하지 않습니다.
+4. 발급된 Client ID를 `map-config.js`의 `clientId`에 입력합니다.
+5. Client Secret은 브라우저 파일이나 공개 GitHub 저장소에 입력하지 않습니다.
+
+Client ID가 없어도 장소 이름·주소·메모는 저장할 수 있으며, 지도 위치 선택만 비활성화됩니다.
 
 공개 저장소에는 `service_role` 키를 절대로 넣지 마세요. 브라우저에는 anon public key만 사용하고, 데이터 접근은 `supabase-schema.sql`의 RLS 정책으로 제한합니다.

@@ -31,9 +31,36 @@ create table public.events (
   created_at timestamptz not null default now()
 );
 
+create table public.meeting_days (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references public.couples(id) on delete cascade,
+  meeting_date date not null,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (couple_id, meeting_date),
+  unique (id, couple_id)
+);
+
+create table public.meeting_places (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references public.couples(id) on delete cascade,
+  meeting_day_id uuid not null,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  place_name text not null check (char_length(place_name) between 1 and 80),
+  address text not null default '' check (char_length(address) <= 200),
+  latitude double precision check (latitude is null or latitude between -90 and 90),
+  longitude double precision check (longitude is null or longitude between -180 and 180),
+  memo text not null default '' check (char_length(memo) <= 300),
+  visit_order integer not null default 1 check (visit_order > 0),
+  created_at timestamptz not null default now(),
+  foreign key (meeting_day_id, couple_id) references public.meeting_days(id, couple_id) on delete cascade
+);
+
 alter table public.couples enable row level security;
 alter table public.couple_members enable row level security;
 alter table public.events enable row level security;
+alter table public.meeting_days enable row level security;
+alter table public.meeting_places enable row level security;
 
 create function public.is_couple_member(target_couple uuid)
 returns boolean language sql stable security definer set search_path = public
@@ -45,6 +72,17 @@ create policy "members view events" on public.events for select using (public.is
 create policy "members add events" on public.events for insert with check (public.is_couple_member(couple_id) and created_by = auth.uid());
 create policy "members update events" on public.events for update using (public.is_couple_member(couple_id)) with check (public.is_couple_member(couple_id));
 create policy "members delete events" on public.events for delete using (public.is_couple_member(couple_id));
+create policy "members view meeting days" on public.meeting_days for select using (public.is_couple_member(couple_id));
+create policy "members add meeting days" on public.meeting_days for insert with check (public.is_couple_member(couple_id) and created_by = auth.uid());
+create policy "members update meeting days" on public.meeting_days for update using (public.is_couple_member(couple_id)) with check (public.is_couple_member(couple_id));
+create policy "members delete meeting days" on public.meeting_days for delete using (public.is_couple_member(couple_id));
+create policy "members view meeting places" on public.meeting_places for select using (public.is_couple_member(couple_id));
+create policy "members add meeting places" on public.meeting_places for insert with check (public.is_couple_member(couple_id) and created_by = auth.uid());
+create policy "members update meeting places" on public.meeting_places for update using (public.is_couple_member(couple_id)) with check (public.is_couple_member(couple_id));
+create policy "members delete meeting places" on public.meeting_places for delete using (public.is_couple_member(couple_id));
+
+grant select, insert, update, delete on public.meeting_days to authenticated;
+grant select, insert, update, delete on public.meeting_places to authenticated;
 
 create function public.create_couple(couple_name text)
 returns uuid language plpgsql security definer set search_path = public
@@ -148,3 +186,5 @@ grant execute on function public.set_member_birthday(uuid, date) to authenticate
 alter publication supabase_realtime add table public.events;
 alter publication supabase_realtime add table public.couples;
 alter publication supabase_realtime add table public.couple_members;
+alter publication supabase_realtime add table public.meeting_days;
+alter publication supabase_realtime add table public.meeting_places;
