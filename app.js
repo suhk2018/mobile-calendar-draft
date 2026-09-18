@@ -90,9 +90,6 @@ const mapOverview = document.querySelector('#mapOverview');
 const overviewMapFrame = document.querySelector('#overviewMapFrame');
 const expandOverviewMapButton = document.querySelector('#expandOverviewMap');
 const overviewMapGuide = overviewMapFrame.querySelector('.place-map-guide');
-const overviewMapQuery = document.querySelector('#overviewMapQuery');
-const searchOverviewMapButton = document.querySelector('#searchOverviewMap');
-const overviewSearchResults = document.querySelector('#overviewSearchResults');
 const mapOverviewNotice = document.querySelector('#mapOverviewNotice');
 const mapPlaceSummary = document.querySelector('#mapPlaceSummary');
 const mapPlaceCount = document.querySelector('#mapPlaceCount');
@@ -127,6 +124,7 @@ let sharedCalendars = [];
 let activeSharedCalendarId = null;
 let editingEvent = null;
 let editingMeetingPlace = null;
+let selectedSearchPlaceName = '';
 let placeMapInstance = null;
 let placeMapMarker = null;
 let placeMapInfoWindow = null;
@@ -929,6 +927,25 @@ function focusOverviewPlace(place) {
   }
 }
 
+function focusOverviewDate(datePlaces) {
+  const mappedPlaces = datePlaces.filter(placeHasCoordinates);
+  if (!mappedPlaces.length || !overviewMapInstance || !window.naver?.maps) {
+    showCalendarToast('이 날짜에는 지도 위치가 저장된 장소가 없어요.');
+    return;
+  }
+  mapPlaceSummary.querySelectorAll('.map-place-card').forEach((card) => {
+    card.classList.toggle('is-selected', mappedPlaces.some((place) => place.mapKey === card.dataset.placeKey));
+  });
+  overviewMapInfoWindow?.close();
+  if (mappedPlaces.length === 1) {
+    focusOverviewPlace(mappedPlaces[0]);
+    return;
+  }
+  const bounds = new window.naver.maps.LatLngBounds();
+  mappedPlaces.forEach((place) => bounds.extend(new window.naver.maps.LatLng(place.latitude, place.longitude)));
+  overviewMapInstance.fitBounds(bounds, { top: 55, right: 35, bottom: 35, left: 35, maxZoom: 16 });
+}
+
 function renderOverviewPlaceList(places) {
   mapPlaceSummary.replaceChildren();
   if (calendarScope !== 'shared') {
@@ -952,27 +969,41 @@ function renderOverviewPlaceList(places) {
     mapPlaceSummary.append(empty);
     return;
   }
+  const placesByDate = new Map();
   places.forEach((place) => {
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = 'map-place-card';
-    card.dataset.placeKey = place.mapKey;
-    const pin = document.createElement('span');
-    pin.className = 'map-place-pin';
-    pin.textContent = placeHasCoordinates(place) ? '●' : '♡';
-    const copy = document.createElement('span');
-    copy.className = 'map-place-card-copy';
-    const name = document.createElement('strong');
-    name.textContent = place.name;
-    const detail = document.createElement('span');
-    detail.textContent = place.address || place.memo || (placeHasCoordinates(place) ? '지도에 저장된 장소' : '위치 미등록');
-    const date = document.createElement('span');
-    date.className = 'map-place-date';
-    date.textContent = formatShortDate(fromKey(place.meetingDate));
-    copy.append(name, detail);
-    card.append(pin, copy, date);
-    card.addEventListener('click', () => focusOverviewPlace(place));
-    mapPlaceSummary.append(card);
+    if (!placesByDate.has(place.meetingDate)) placesByDate.set(place.meetingDate, []);
+    placesByDate.get(place.meetingDate).push(place);
+  });
+  placesByDate.forEach((datePlaces, dateKey) => {
+    const group = document.createElement('section');
+    group.className = 'map-place-date-group';
+    const heading = document.createElement('button');
+    heading.type = 'button';
+    heading.className = 'map-place-date-heading';
+    const date = fromKey(dateKey);
+    heading.innerHTML = `<span>${new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }).format(date)}</span><small>${datePlaces.length}곳 · 지도에서 보기</small>`;
+    heading.addEventListener('click', () => focusOverviewDate(datePlaces));
+    group.append(heading);
+    datePlaces.forEach((place, index) => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'map-place-card';
+      card.dataset.placeKey = place.mapKey;
+      const pin = document.createElement('span');
+      pin.className = 'map-place-pin';
+      pin.textContent = placeHasCoordinates(place) ? String(index + 1) : '♡';
+      const copy = document.createElement('span');
+      copy.className = 'map-place-card-copy';
+      const name = document.createElement('strong');
+      name.textContent = place.name;
+      const detail = document.createElement('span');
+      detail.textContent = place.address || place.memo || (placeHasCoordinates(place) ? '지도에 저장된 장소' : '위치 미등록');
+      copy.append(name, detail);
+      card.append(pin, copy);
+      card.addEventListener('click', () => focusOverviewPlace(place));
+      group.append(card);
+    });
+    mapPlaceSummary.append(group);
   });
 }
 
@@ -980,8 +1011,6 @@ async function initializeOverviewMap(places) {
   const renderToken = ++overviewMapRenderToken;
   mapOverviewNotice.hidden = true;
   expandOverviewMapButton.hidden = true;
-  overviewSearchResults.replaceChildren();
-  overviewSearchResults.hidden = true;
   overviewMapInfoWindow = null;
   overviewSearchMarker = null;
   if (calendarScope !== 'shared') {
@@ -1018,7 +1047,6 @@ async function initializeOverviewMap(places) {
   overviewSearchMarker = null;
   overviewMapMarkers = new Map();
   window.naver.maps.Event.addListener(overviewMapInstance, 'click', (event) => {
-    overviewSearchResults.hidden = true;
     const latitude = typeof event.coord.lat === 'function' ? event.coord.lat() : event.coord.y;
     const longitude = typeof event.coord.lng === 'function' ? event.coord.lng() : event.coord.x;
     showOverviewCoordinateInfo(latitude, longitude);
@@ -1056,103 +1084,6 @@ function showOverviewCoordinateInfo(latitude, longitude) {
     const addressText = address?.roadAddress || address?.jibunAddress || '선택한 지도 위치';
     overviewMapInfoWindow?.setContent(createMapInfoCard('이 위치의 주소', addressText));
     overviewMapInfoWindow?.open(overviewMapInstance, overviewSearchMarker);
-  });
-}
-
-function showOverviewSearchMessage(message) {
-  overviewSearchResults.replaceChildren();
-  const empty = document.createElement('p');
-  empty.className = 'place-search-empty';
-  empty.textContent = message;
-  overviewSearchResults.append(empty);
-  overviewSearchResults.hidden = false;
-}
-
-function renderOverviewSearchResults(addresses) {
-  overviewSearchResults.replaceChildren();
-  if (!addresses.length) {
-    showOverviewSearchMessage('검색 결과가 없어요. 도로명이나 지번 주소를 더 자세히 입력해 보세요.');
-    return;
-  }
-  addresses.forEach((address) => {
-    const latitude = Number(address.y);
-    const longitude = Number(address.x);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-    const resultName = stripSearchMarkup(address.title || '');
-    const roadAddress = address.roadAddress || '';
-    const jibunAddress = address.jibunAddress || '';
-    const selectedAddress = roadAddress || jibunAddress;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'place-search-result';
-    const title = document.createElement('strong');
-    title.textContent = resultName || selectedAddress;
-    button.append(title);
-    const detailText = [selectedAddress, address.category].filter(Boolean).join(' · ');
-    if (detailText) {
-      const detail = document.createElement('span');
-      detail.textContent = detailText;
-      button.append(detail);
-    }
-    button.addEventListener('click', () => {
-      const position = new window.naver.maps.LatLng(latitude, longitude);
-      overviewMapInstance.panTo(position);
-      overviewMapInstance.setZoom(16);
-      if (!overviewSearchMarker) overviewSearchMarker = new window.naver.maps.Marker({ map: overviewMapInstance, position });
-      else overviewSearchMarker.setPosition(position);
-      overviewMapInfoWindow?.setContent(createMapInfoCard(resultName || '검색한 위치', detailText || selectedAddress));
-      overviewMapInfoWindow?.open(overviewMapInstance, overviewSearchMarker);
-      overviewMapQuery.value = selectedAddress;
-      overviewSearchResults.hidden = true;
-    });
-    overviewSearchResults.append(button);
-  });
-  if (!overviewSearchResults.childElementCount) {
-    showOverviewSearchMessage('선택할 수 있는 주소가 없어요.');
-    return;
-  }
-  overviewSearchResults.hidden = false;
-}
-
-async function searchOverviewAddress() {
-  const query = overviewMapQuery.value.trim();
-  if (!query) {
-    showOverviewSearchMessage('검색할 도로명이나 지번 주소를 입력해 주세요.');
-    overviewMapQuery.focus();
-    return;
-  }
-  if (!overviewMapInstance || !window.naver?.maps?.Service) {
-    showOverviewSearchMessage('공유 캘린더의 지도를 먼저 불러와 주세요.');
-    return;
-  }
-  searchOverviewMapButton.disabled = true;
-  searchOverviewMapButton.textContent = '검색 중';
-  let placeSearchUnavailable = false;
-  try {
-    const places = await fetchNaverPlaceResults(query);
-    if (places.length) {
-      renderOverviewSearchResults(places);
-      searchOverviewMapButton.disabled = false;
-      searchOverviewMapButton.textContent = '검색';
-      return;
-    }
-  } catch (error) {
-    placeSearchUnavailable = true;
-    console.warn('가게명 검색 서버를 사용할 수 없어 주소 검색으로 전환합니다.', error);
-  }
-  window.naver.maps.Service.geocode({ query }, (status, response) => {
-    searchOverviewMapButton.disabled = false;
-    searchOverviewMapButton.textContent = '검색';
-    if (status !== window.naver.maps.Service.Status.OK) {
-      showOverviewSearchMessage('주소를 검색하지 못했어요. 잠시 후 다시 시도해 주세요.');
-      return;
-    }
-    const addresses = response?.v2?.addresses || [];
-    if (!addresses.length && placeSearchUnavailable) {
-      showOverviewSearchMessage('가게명 검색 서버 연결이 필요해요. 현재는 정확한 도로명·지번 주소로 검색해 주세요.');
-      return;
-    }
-    renderOverviewSearchResults(addresses);
   });
 }
 
@@ -1533,7 +1464,9 @@ function renderPlaceSearchResults(addresses) {
     }
     button.addEventListener('click', () => {
       const selectedAddress = roadAddress || jibunAddress;
-      if (resultName && !placeName.value.trim()) placeName.value = resultName;
+      const previousSearchPlaceName = selectedSearchPlaceName;
+      selectedSearchPlaceName = resultName;
+      if (resultName && (!placeName.value.trim() || placeName.value.trim() === previousSearchPlaceName)) placeName.value = resultName;
       placeAddress.value = selectedAddress;
       placeMapQuery.value = selectedAddress;
       setPlacePosition(latitude, longitude);
@@ -1602,7 +1535,10 @@ function setPlacePosition(latitude, longitude, shouldResolveAddress = false) {
     placeMapInstance.panTo(position);
     if (placeMapInstance.getZoom() < 15) placeMapInstance.setZoom(15);
   }
-  if (shouldResolveAddress) reverseGeocodePlace(latitude, longitude);
+  if (shouldResolveAddress) {
+    selectedSearchPlaceName = '';
+    reverseGeocodePlace(latitude, longitude);
+  }
 }
 
 async function initializePlaceMap() {
@@ -1674,6 +1610,7 @@ function setPlaceMapExpanded(expanded, fromHistory = false) {
 function openPlaceSheet(place = null, fromHistory = false) {
   if (!placeSheet.classList.contains('is-open') && !fromHistory) pushAppHistoryLayer('place');
   editingMeetingPlace = place;
+  selectedSearchPlaceName = place?.name || '';
   placeForm.reset();
   placeName.value = place?.name || '';
   placeAddress.value = place?.address || '';
@@ -1713,6 +1650,7 @@ function closePlaceSheet(fromHistory = false) {
   setPlaceMapExpanded(false, true);
   placeSheet.classList.remove('is-open');
   editingMeetingPlace = null;
+  selectedSearchPlaceName = '';
   placeMapInstance = null;
   placeMapMarker = null;
   placeMapInfoWindow = null;
@@ -1792,12 +1730,6 @@ placeMapQuery.addEventListener('keydown', (event) => {
   searchPlaceAddress();
 });
 expandOverviewMapButton.addEventListener('click', () => setOverviewMapExpanded(!overviewMapFrame.classList.contains('is-expanded')));
-searchOverviewMapButton.addEventListener('click', searchOverviewAddress);
-overviewMapQuery.addEventListener('keydown', (event) => {
-  if (event.key !== 'Enter') return;
-  event.preventDefault();
-  searchOverviewAddress();
-});
 useCurrentLocationButton.addEventListener('click', () => {
   if (!navigator.geolocation) {
     placeFormError.textContent = '이 기기에서는 현재 위치를 사용할 수 없어요.';
@@ -1823,8 +1755,12 @@ useCurrentLocationButton.addEventListener('click', () => {
 });
 placeForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const name = placeName.value.trim();
-  if (!name) return;
+  const name = placeName.value.trim() || selectedSearchPlaceName;
+  if (!name) {
+    placeFormError.textContent = '장소 이름을 입력하거나 가게 검색 결과를 선택해 주세요.';
+    placeFormError.hidden = false;
+    return;
+  }
   const coordinates = placeCoordinates();
   const saveButton = placeForm.querySelector('.save-button');
   saveButton.disabled = true;

@@ -169,7 +169,12 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .map-info-card strong { overflow: hidden; font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }
 .map-info-card span { color: var(--text-secondary); font-size: .68rem; line-height: 1.45; }
 .map-info-card small { color: var(--pink); font-size: .64rem; font-weight: 800; }
-.map-place-summary { display: grid; gap: 8px; margin-top: 12px; }
+.map-place-summary { display: grid; gap: 14px; margin-top: 12px; }
+.map-place-date-group { display: grid; gap: 7px; }
+.map-place-date-heading { display: flex; width: 100%; padding: 3px 4px 2px; align-items: center; justify-content: space-between; gap: 10px; border: 0; background: transparent; color: var(--text); text-align: left; }
+.map-place-date-heading span { font-size: .8rem; font-weight: 850; }
+.map-place-date-heading small { color: var(--primary-text); font-size: .64rem; font-weight: 750; }
+.map-place-date-heading:hover small, .map-place-date-heading:focus-visible small { text-decoration: underline; }
 .map-place-empty { display: grid; min-height: 130px; margin: 0; padding: 22px; place-items: center; border: 1px dashed var(--border); border-radius: 17px; color: var(--text-secondary); font-size: .78rem; line-height: 1.6; text-align: center; }
 .map-place-card { display: flex; width: 100%; min-height: 66px; padding: 11px 12px; align-items: center; gap: 11px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface-raised); color: var(--text); text-align: left; }
 .map-place-card:hover, .map-place-card:focus-visible, .map-place-card.is-selected { border-color: color-mix(in srgb, var(--pink) 45%, var(--border)); background: color-mix(in srgb, var(--pink) 7%, var(--surface)); outline: none; }
@@ -401,6 +406,7 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .place-map:not(.is-ready) { display: none; }
 .place-map-expand { position: absolute; z-index: 8; top: 62px; right: 10px; display: flex; min-height: 38px; padding: 0 12px; align-items: center; gap: 6px; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--text); font-size: .7rem; font-weight: 800; box-shadow: 0 5px 18px rgba(0,0,0,.14); touch-action: manipulation; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .place-map-expand[hidden] { display: none; }
+.overview-map-frame > .place-map-expand { top: 10px; }
 .place-map-guide { position: absolute; z-index: 3; right: 50%; bottom: max(22px, calc(12px + env(safe-area-inset-bottom))); width: max-content; max-width: calc(100% - 32px); margin: 0; padding: 9px 13px; border-radius: 999px; background: color-mix(in srgb, var(--text) 84%, transparent); color: var(--surface); font-size: .7rem; font-weight: 700; text-align: center; transform: translateX(50%); pointer-events: none; }
 .place-map-frame.is-expanded { position: fixed; z-index: 45; inset: 0; padding: 0; background: var(--background); }
 .overview-map-frame.is-expanded { position: fixed; z-index: 45; inset: 0; padding: 0; background: var(--background); }

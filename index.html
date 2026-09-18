@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=46" />
-    <link rel="icon" href="icon.svg?v=46" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=46" />
-    <link rel="stylesheet" href="styles.css?v=46" />
+    <link rel="manifest" href="manifest.webmanifest?v=47" />
+    <link rel="icon" href="icon.svg?v=47" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=47" />
+    <link rel="stylesheet" href="styles.css?v=47" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -68,11 +68,6 @@
         </div>
         <p class="map-view-description" id="mapViewDescription">만난 날에 기록한 장소를 한눈에 볼 수 있어요.</p>
         <div class="overview-map-frame" id="overviewMapFrame">
-          <div class="place-map-search" role="search">
-            <input id="overviewMapQuery" type="search" autocomplete="off" placeholder="가게명·도로명·지번 검색" aria-label="방문 지도 장소 검색" />
-            <button id="searchOverviewMap" type="button">검색</button>
-          </div>
-          <div class="place-search-results" id="overviewSearchResults" aria-live="polite" hidden></div>
           <div class="map-overview" id="mapOverview" aria-label="방문 장소 지도"></div>
           <button class="place-map-expand" id="expandOverviewMap" type="button" aria-expanded="false" hidden>⛶ <span>크게 보기</span></button>
           <p class="place-map-guide" hidden>저장한 마커를 누르면 장소 정보가 보여요</p>
@@ -183,7 +178,7 @@
         <form id="placeForm">
           <label>
             장소 이름
-            <input id="placeName" name="name" type="text" maxlength="80" required placeholder="예: 함께 갔던 카페" />
+            <input id="placeName" name="name" type="text" maxlength="80" placeholder="비워두면 검색한 가게 이름을 사용해요" />
           </label>
           <label>
             주소 <span class="optional-label">선택</span>
@@ -357,9 +352,9 @@
       </button>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=46"></script>
-    <script src="map-config.js?v=46"></script>
-    <script src="shared-calendar.js?v=46"></script>
-    <script src="app.js?v=46"></script>
+    <script src="supabase-config.js?v=47"></script>
+    <script src="map-config.js?v=47"></script>
+    <script src="shared-calendar.js?v=47"></script>
+    <script src="app.js?v=47"></script>
   </body>
 </html>
