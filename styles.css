@@ -154,7 +154,7 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 }
 
 .calendar-panel { overflow: hidden; padding: 20px 16px 16px; }
-.map-panel { display: flex; min-height: 620px; padding: 20px; flex-direction: column; border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); }
+.map-panel { display: flex; min-height: 620px; padding: 20px 20px max(108px, calc(90px + env(safe-area-inset-bottom))); flex-direction: column; border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); }
 .map-view-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .map-view-heading h2 { font-size: 1.16rem; }
 .map-place-count { padding: 6px 10px; border-radius: 999px; background: var(--primary-soft); color: var(--primary-text); font-size: .72rem; font-weight: 800; white-space: nowrap; }
@@ -345,6 +345,7 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .meeting-places-heading button { min-height: 34px; padding: 0 11px; flex: 0 0 auto; border: 0; border-radius: 11px; background: var(--pink); color: #fff; font-size: .68rem; font-weight: 800; }
 .meeting-place-list { display: grid; gap: 7px; }
 .meeting-place-empty { margin: 0; padding: 10px 11px; border-radius: 12px; background: var(--hover); color: var(--text-secondary); font-size: .72rem; line-height: 1.45; }
+.meeting-place-row { display: grid; grid-template-columns: minmax(0, 1fr) 34px; gap: 6px; align-items: stretch; }
 .meeting-place-item { display: flex; width: 100%; min-height: 58px; padding: 9px 10px; align-items: center; gap: 10px; border: 0; border-radius: 13px; background: var(--surface-raised); color: var(--text); text-align: left; }
 .meeting-place-order { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--pink) 14%, var(--surface)); color: var(--pink); font-size: .68rem; font-weight: 850; }
 .meeting-place-copy { display: grid; min-width: 0; flex: 1; gap: 2px; }
@@ -353,6 +354,10 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .meeting-place-copy span { color: var(--text-secondary); font-size: .66rem; }
 .meeting-place-copy small { color: var(--text-tertiary); font-size: .62rem; }
 .meeting-place-edit { color: var(--text-tertiary); font-size: .72rem; font-weight: 800; }
+.meeting-place-order-controls { display: grid; gap: 3px; }
+.meeting-place-move { display: grid; min-width: 34px; min-height: 27px; padding: 0; place-items: center; border: 0; border-radius: 9px; background: var(--hover); color: var(--text-secondary); font-size: .78rem; font-weight: 900; line-height: 1; }
+.meeting-place-move:not(:disabled):hover, .meeting-place-move:not(:disabled):focus-visible { background: var(--primary-soft); color: var(--primary-text); outline: none; }
+.meeting-place-move:disabled { cursor: default; opacity: .28; }
 .agenda-add-button { display: flex; width: 100%; min-height: 52px; margin-top: 17px; padding: 0 18px; align-items: center; justify-content: space-between; border: 0; border-radius: 17px; background: var(--primary); color: #fff; font-size: .86rem; font-weight: 700; }
 .agenda-add-button strong { font-size: 1.45rem; font-weight: 400; }
 .agenda-add-button:hover, .agenda-add-button:focus-visible { background: var(--primary-hover); }

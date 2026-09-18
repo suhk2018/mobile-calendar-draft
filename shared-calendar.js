@@ -567,6 +567,21 @@
     return true;
   }
 
+  async function reorderMeetingPlaces(places) {
+    if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
+    if (!meetingTablesAvailable) throw new Error('먼저 장소 기록용 Supabase 마이그레이션을 실행해 주세요.');
+    const updates = places.map((place, index) => client
+      .from('meeting_places')
+      .update({ visit_order: index + 1 })
+      .eq('id', place.id)
+      .eq('couple_id', activeCalendar.id));
+    const results = await Promise.all(updates);
+    const failed = results.find((result) => result.error);
+    if (failed?.error) throw failed.error;
+    await loadMeetingDays();
+    return true;
+  }
+
   async function setBirthday(birthday) {
     if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
     const { error } = await client.rpc('set_member_birthday', { target_couple: activeCalendar.id, new_birthday: birthday });
@@ -582,6 +597,7 @@
     setMeetingDay,
     upsertMeetingPlace,
     deleteMeetingPlace,
+    reorderMeetingPlaces,
     setBirthday,
     selectCalendar,
     meetingTablesReady: () => meetingTablesAvailable,

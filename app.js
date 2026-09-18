@@ -746,6 +746,8 @@ function renderMeetingPlaces(meetingDay, canCheckMeetingDay) {
     return;
   }
   places.forEach((place, index) => {
+    const row = document.createElement('div');
+    row.className = 'meeting-place-row';
     const item = document.createElement('button');
     item.type = 'button';
     item.className = 'meeting-place-item';
@@ -773,7 +775,38 @@ function renderMeetingPlaces(meetingDay, canCheckMeetingDay) {
     edit.textContent = '수정';
     item.append(order, copy, edit);
     item.addEventListener('click', () => openPlaceSheet(place));
-    meetingPlaceList.append(item);
+    const controls = document.createElement('span');
+    controls.className = 'meeting-place-order-controls';
+    const createMoveButton = (direction, label, symbol) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'meeting-place-move';
+      button.textContent = symbol;
+      button.setAttribute('aria-label', `${place.name} ${label}`);
+      button.disabled = direction < 0 ? index === 0 : index === places.length - 1;
+      button.addEventListener('click', async () => {
+        const nextIndex = index + direction;
+        if (nextIndex < 0 || nextIndex >= places.length) return;
+        meetingPlaceList.querySelectorAll('.meeting-place-move').forEach((control) => { control.disabled = true; });
+        const reordered = [...places];
+        [reordered[index], reordered[nextIndex]] = [reordered[nextIndex], reordered[index]];
+        try {
+          await window.sharedCalendar.reorderMeetingPlaces(reordered);
+          showCalendarToast('방문 순서를 바꿨어요.');
+        } catch (error) {
+          console.error(error);
+          showCalendarToast('순서를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.');
+          renderAgenda();
+        }
+      });
+      return button;
+    };
+    controls.append(
+      createMoveButton(-1, '앞으로 이동', '↑'),
+      createMoveButton(1, '뒤로 이동', '↓'),
+    );
+    row.append(item, controls);
+    meetingPlaceList.append(row);
   });
 }
 
