@@ -887,6 +887,23 @@ function createMapInfoCard(title, detail, meta = '') {
   return card;
 }
 
+function resizeNaverMapAfterLayout(map, element, center, expanded) {
+  if (!map || !window.naver?.maps) return;
+  if (!expanded) {
+    element.style.removeProperty('width');
+    element.style.removeProperty('height');
+  }
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const width = element.clientWidth;
+      const height = element.clientHeight;
+      if (!width || !height) return;
+      map.setSize(new window.naver.maps.Size(width, height));
+      map.setCenter(center);
+    });
+  });
+}
+
 function showOverviewMapNotice(title, description) {
   mapOverviewNotice.replaceChildren();
   const strong = document.createElement('strong');
@@ -1155,10 +1172,7 @@ function setOverviewMapExpanded(expanded, fromHistory = false) {
   overviewMapGuide.hidden = !expanded;
   if (!overviewMapInstance || !window.naver?.maps) return;
   const center = overviewMapInstance.getCenter();
-  requestAnimationFrame(() => {
-    overviewMapInstance.setSize(new window.naver.maps.Size(mapOverview.clientWidth, mapOverview.clientHeight));
-    overviewMapInstance.setCenter(center);
-  });
+  resizeNaverMapAfterLayout(overviewMapInstance, mapOverview, center, expanded);
 }
 
 function renderMapOverview() {
@@ -1650,11 +1664,11 @@ function setPlaceMapExpanded(expanded, fromHistory = false) {
   expandPlaceMapButton.querySelector('span').textContent = expanded ? '축소' : '크게 보기';
   placeMapGuide.hidden = !expanded;
   if (!placeMapInstance || !window.naver?.maps) return;
-  requestAnimationFrame(() => {
-    placeMapInstance.setSize(new window.naver.maps.Size(placeMap.clientWidth, placeMap.clientHeight));
-    const coordinates = placeCoordinates();
-    if (coordinates) placeMapInstance.panTo(new window.naver.maps.LatLng(coordinates.latitude, coordinates.longitude));
-  });
+  const coordinates = placeCoordinates();
+  const center = coordinates
+    ? new window.naver.maps.LatLng(coordinates.latitude, coordinates.longitude)
+    : placeMapInstance.getCenter();
+  resizeNaverMapAfterLayout(placeMapInstance, placeMap, center, expanded);
 }
 
 function openPlaceSheet(place = null, fromHistory = false) {

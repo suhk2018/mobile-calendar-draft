@@ -137,7 +137,7 @@ supabase-meeting-places-migration.sql 만난 날과 방문 장소 마이그레�
 4. `supabase functions deploy naver-place-search --project-ref lkwnftupcknlyxodslyu`로 함수를 배포합니다.
 5. Secret은 `map-config.js`, `supabase-config.js` 또는 GitHub 저장소에 넣지 않습니다.
 
-함수가 연결되면 일정의 장소 추가 지도와 하단 방문 지도에서 상호명으로 최대 5개의 업체·기관을 검색할 수 있습니다. 연결 전에는 도로명·지번 주소 검색으로 자동 전환됩니다.
+배포된 `naver-place-search` 함수가 NAVER API HUB와 연결되어 일정의 장소 추가 지도와 하단 방문 지도에서 상호명으로 최대 5개의 업체·기관을 검색할 수 있습니다. 연결에 문제가 있으면 도로명·지번 주소 검색으로 자동 전환됩니다.
 
 Client ID가 없어도 장소 이름·주소·메모는 저장할 수 있으며, 지도 위치 선택만 비활성화됩니다.
 

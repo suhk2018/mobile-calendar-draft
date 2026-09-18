@@ -160,7 +160,7 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .map-place-count { padding: 6px 10px; border-radius: 999px; background: var(--primary-soft); color: var(--primary-text); font-size: .72rem; font-weight: 800; white-space: nowrap; }
 .map-view-description { margin: 8px 0 15px; color: var(--text-secondary); font-size: .75rem; line-height: 1.5; }
 .overview-map-frame { position: relative; }
-.map-overview { min-height: 340px; overflow: hidden; border: 1px solid var(--border); border-radius: 19px; background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 8%, var(--calendar-cell)), var(--calendar-cell)); }
+.map-overview { height: 340px; min-height: 340px; overflow: hidden; border: 1px solid var(--border); border-radius: 19px; background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 8%, var(--calendar-cell)), var(--calendar-cell)); }
 .map-overview:empty::before { display: grid; min-height: 340px; place-items: center; color: var(--text-tertiary); font-size: .75rem; content: '지도를 불러오는 중이에요'; }
 .map-overview-placeholder { display: grid; min-height: 340px; margin: 0; padding: 22px; place-items: center; color: var(--text-tertiary); font-size: .76rem; text-align: center; }
 .map-overview-notice { margin-top: 12px; padding: 14px; border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border)); border-radius: 15px; background: var(--primary-soft); color: var(--primary-text); font-size: .74rem; line-height: 1.55; }
@@ -596,7 +596,7 @@ legend { margin-bottom: 8px; }
   .account-button { max-width: 76px; padding: 0 10px; }
   .calendar-panel { display: flex; min-height: 0; padding: 17px 7px 11px; flex: 1 0 auto; flex-direction: column; border-radius: 22px; }
   .map-panel { min-height: 0; padding: 17px 12px 12px; flex: 1 0 auto; border-radius: 22px; }
-  .map-overview { min-height: clamp(300px, 45dvh, 430px); }
+  .map-overview { height: clamp(300px, 45dvh, 430px); min-height: clamp(300px, 45dvh, 430px); }
   .map-overview:empty::before { min-height: clamp(300px, 45dvh, 430px); }
   .map-overview-placeholder { min-height: clamp(300px, 45dvh, 430px); }
   .map-place-summary { max-height: 30dvh; overflow-y: auto; overscroll-behavior: contain; }
