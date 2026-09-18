@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=39" />
-    <link rel="icon" href="icon.svg?v=39" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=39" />
-    <link rel="stylesheet" href="styles.css?v=39" />
+    <link rel="manifest" href="manifest.webmanifest?v=40" />
+    <link rel="icon" href="icon.svg?v=40" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=40" />
+    <link rel="stylesheet" href="styles.css?v=40" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -56,6 +56,20 @@
           </div>
           <div class="calendar-grid" id="calendarGrid" role="grid" aria-label="날짜 선택"></div>
         </div>
+      </section>
+
+      <section class="map-panel" id="mapView" aria-labelledby="mapViewTitle" hidden>
+        <div class="map-view-heading">
+          <div>
+            <p class="eyebrow">OUR PLACES</p>
+            <h2 id="mapViewTitle">우리의 방문 지도</h2>
+          </div>
+          <span class="map-place-count" id="mapPlaceCount">0곳</span>
+        </div>
+        <p class="map-view-description" id="mapViewDescription">만난 날에 기록한 장소를 한눈에 볼 수 있어요.</p>
+        <div class="map-overview" id="mapOverview" aria-label="방문 장소 지도"></div>
+        <div class="map-overview-notice" id="mapOverviewNotice" hidden></div>
+        <div class="map-place-summary" id="mapPlaceSummary" aria-live="polite"></div>
       </section>
 
       <div class="agenda-backdrop" id="agendaBackdrop" hidden></div>
@@ -220,6 +234,17 @@
 
     </main>
 
+    <nav class="bottom-navigation" aria-label="주요 화면">
+      <button class="bottom-navigation-button is-active" id="calendarTabButton" type="button" aria-pressed="true">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v12H4V7a2 2 0 0 1 2-2Z"/></svg>
+        <span>캘린더</span>
+      </button>
+      <button class="bottom-navigation-button" id="mapTabButton" type="button" aria-pressed="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18-5 2V6l5-2 6 2 5-2v14l-5 2-6-2Zm0 0V4m6 16V6"/></svg>
+        <span>지도</span>
+      </button>
+    </nav>
+
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
     <aside class="side-menu" id="sideMenu" aria-labelledby="menuTitle" aria-modal="true" role="dialog">
       <div class="menu-heading">
@@ -314,9 +339,9 @@
       </button>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=39"></script>
-    <script src="map-config.js?v=39"></script>
-    <script src="shared-calendar.js?v=39"></script>
-    <script src="app.js?v=39"></script>
+    <script src="supabase-config.js?v=40"></script>
+    <script src="map-config.js?v=40"></script>
+    <script src="shared-calendar.js?v=40"></script>
+    <script src="app.js?v=40"></script>
   </body>
 </html>

@@ -76,10 +76,20 @@ const placeCoordinateLabel = document.querySelector('#placeCoordinateLabel');
 const useCurrentLocationButton = document.querySelector('#useCurrentLocation');
 const placeFormError = document.querySelector('#placeFormError');
 const deleteMeetingPlaceButton = document.querySelector('#deleteMeetingPlace');
+const calendarPanel = document.querySelector('.calendar-panel');
+const mapView = document.querySelector('#mapView');
+const mapTabButton = document.querySelector('#mapTabButton');
+const calendarTabButton = document.querySelector('#calendarTabButton');
+const mapOverview = document.querySelector('#mapOverview');
+const mapOverviewNotice = document.querySelector('#mapOverviewNotice');
+const mapPlaceSummary = document.querySelector('#mapPlaceSummary');
+const mapPlaceCount = document.querySelector('#mapPlaceCount');
+const mapViewDescription = document.querySelector('#mapViewDescription');
 
 const storageKey = 'green-calendar-events-v1';
 const themeStorageKey = 'calendar-theme-v1';
 const calendarScopeStorageKey = 'calendar-scope-v1';
+const primaryViewStorageKey = 'calendar-primary-view-v1';
 const today = startOfDay(new Date());
 let cursor = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedStartDate = new Date(today);
@@ -107,6 +117,10 @@ let editingMeetingPlace = null;
 let placeMapInstance = null;
 let placeMapMarker = null;
 let naverMapLoader = null;
+let primaryView = localStorage.getItem(primaryViewStorageKey) === 'map' ? 'map' : 'calendar';
+let overviewMapInstance = null;
+let overviewMapMarkers = new Map();
+let overviewMapRenderToken = 0;
 const holidaysByYear = new Map();
 const maxCalendarEventLanes = 5;
 
@@ -789,9 +803,179 @@ function renderAgenda() {
   });
 }
 
+function meetingPlacesForMap() {
+  if (calendarScope !== 'shared') return [];
+  return sharedMeetingDays
+    .flatMap((meetingDay) => (meetingDay.places || []).map((place, index) => ({
+      ...place,
+      meetingDate: meetingDay.date,
+      mapKey: String(place.id || `${meetingDay.date}-${index}-${place.name}`),
+    })))
+    .sort((a, b) => b.meetingDate.localeCompare(a.meetingDate) || (a.order || 0) - (b.order || 0));
+}
+
+function placeHasCoordinates(place) {
+  return Number.isFinite(place.latitude) && Number.isFinite(place.longitude);
+}
+
+function showOverviewMapPlaceholder(message) {
+  overviewMapInstance = null;
+  overviewMapMarkers = new Map();
+  mapOverview.replaceChildren();
+  const placeholder = document.createElement('p');
+  placeholder.className = 'map-overview-placeholder';
+  placeholder.textContent = message;
+  mapOverview.append(placeholder);
+}
+
+function showOverviewMapNotice(title, description) {
+  mapOverviewNotice.replaceChildren();
+  const strong = document.createElement('strong');
+  strong.textContent = title;
+  const copy = document.createElement('span');
+  copy.textContent = description;
+  mapOverviewNotice.append(strong, copy);
+  mapOverviewNotice.hidden = false;
+}
+
+function focusOverviewPlace(place) {
+  if (!placeHasCoordinates(place) || !overviewMapInstance || !window.naver?.maps) {
+    if (!placeHasCoordinates(place)) showCalendarToast('이 장소에는 아직 지도 위치가 저장되지 않았어요.');
+    return;
+  }
+  const position = new window.naver.maps.LatLng(place.latitude, place.longitude);
+  overviewMapInstance.panTo(position);
+  overviewMapInstance.setZoom(16);
+  mapPlaceSummary.querySelectorAll('.map-place-card').forEach((card) => card.classList.toggle('is-selected', card.dataset.placeKey === place.mapKey));
+}
+
+function renderOverviewPlaceList(places) {
+  mapPlaceSummary.replaceChildren();
+  if (calendarScope !== 'shared') {
+    const empty = document.createElement('p');
+    empty.className = 'map-place-empty';
+    empty.textContent = '공유 캘린더를 선택하면 두 사람이 함께 간 장소를 지도에서 볼 수 있어요.';
+    mapPlaceSummary.append(empty);
+    return;
+  }
+  if (!meetingTablesReady) {
+    const empty = document.createElement('p');
+    empty.className = 'map-place-empty';
+    empty.textContent = '방문 장소 데이터를 사용하려면 Supabase 장소 마이그레이션이 필요해요.';
+    mapPlaceSummary.append(empty);
+    return;
+  }
+  if (!places.length) {
+    const empty = document.createElement('p');
+    empty.className = 'map-place-empty';
+    empty.textContent = '아직 기록한 장소가 없어요.\n캘린더에서 만난 날을 체크하고 장소를 추가해 보세요.';
+    mapPlaceSummary.append(empty);
+    return;
+  }
+  places.forEach((place) => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'map-place-card';
+    card.dataset.placeKey = place.mapKey;
+    const pin = document.createElement('span');
+    pin.className = 'map-place-pin';
+    pin.textContent = placeHasCoordinates(place) ? '●' : '♡';
+    const copy = document.createElement('span');
+    copy.className = 'map-place-card-copy';
+    const name = document.createElement('strong');
+    name.textContent = place.name;
+    const detail = document.createElement('span');
+    detail.textContent = place.address || place.memo || (placeHasCoordinates(place) ? '지도에 저장된 장소' : '위치 미등록');
+    const date = document.createElement('span');
+    date.className = 'map-place-date';
+    date.textContent = formatShortDate(fromKey(place.meetingDate));
+    copy.append(name, detail);
+    card.append(pin, copy, date);
+    card.addEventListener('click', () => focusOverviewPlace(place));
+    mapPlaceSummary.append(card);
+  });
+}
+
+async function initializeOverviewMap(places) {
+  const renderToken = ++overviewMapRenderToken;
+  mapOverviewNotice.hidden = true;
+  if (calendarScope !== 'shared') {
+    showOverviewMapPlaceholder('공유 캘린더를 먼저 선택해 주세요');
+    return;
+  }
+  try {
+    await loadNaverMap();
+  } catch (error) {
+    showOverviewMapPlaceholder('네이버 지도 연결을 기다리고 있어요');
+    if (error.message === 'NAVER_MAP_NOT_CONFIGURED') {
+      showOverviewMapNotice('네이버 지도 Client ID가 필요해요', 'Naver Cloud Maps에서 Dynamic Map을 활성화한 뒤 map-config.js에 Client ID를 입력하면 지도가 바로 표시돼요.');
+    } else {
+      showOverviewMapNotice('지도를 불러오지 못했어요', '등록한 웹 서비스 URL과 Client ID를 확인해 주세요.');
+    }
+    return;
+  }
+  if (renderToken !== overviewMapRenderToken || primaryView !== 'map') return;
+  const mappedPlaces = places.filter(placeHasCoordinates);
+  mapOverview.replaceChildren();
+  const initial = mappedPlaces[0] || { latitude: 37.5666103, longitude: 126.9783882 };
+  overviewMapInstance = new window.naver.maps.Map(mapOverview, {
+    center: new window.naver.maps.LatLng(initial.latitude, initial.longitude),
+    zoom: mappedPlaces.length === 1 ? 16 : 11,
+    zoomControl: true,
+  });
+  overviewMapMarkers = new Map();
+  if (!mappedPlaces.length) {
+    showOverviewMapNotice('지도에 표시할 위치가 없어요', '기존 장소를 수정해 지도에서 위치를 고르면 여기에 마커가 생겨요.');
+    return;
+  }
+  const bounds = new window.naver.maps.LatLngBounds();
+  mappedPlaces.forEach((place) => {
+    const position = new window.naver.maps.LatLng(place.latitude, place.longitude);
+    const marker = new window.naver.maps.Marker({ map: overviewMapInstance, position, title: place.name });
+    overviewMapMarkers.set(place.mapKey, marker);
+    bounds.extend(position);
+    window.naver.maps.Event.addListener(marker, 'click', () => {
+      focusOverviewPlace(place);
+      mapPlaceSummary.querySelector(`[data-place-key="${CSS.escape(place.mapKey)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  });
+  if (mappedPlaces.length > 1) {
+    overviewMapInstance.fitBounds(bounds);
+    window.setTimeout(() => {
+      if (overviewMapInstance?.getZoom() > 15) overviewMapInstance.setZoom(15);
+    }, 100);
+  }
+}
+
+function renderMapOverview() {
+  const places = meetingPlacesForMap();
+  const activeCalendar = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId);
+  mapPlaceCount.textContent = `${places.length}곳`;
+  mapViewDescription.textContent = calendarScope === 'shared' && activeCalendar
+    ? `${activeCalendar.name}에 기록한 방문 장소예요.`
+    : '공유 캘린더를 선택하면 함께 간 장소를 볼 수 있어요.';
+  renderOverviewPlaceList(places);
+  if (primaryView === 'map') void initializeOverviewMap(places);
+}
+
+function setPrimaryView(view) {
+  primaryView = view === 'map' ? 'map' : 'calendar';
+  localStorage.setItem(primaryViewStorageKey, primaryView);
+  const showingMap = primaryView === 'map';
+  if (showingMap && agendaPanel.classList.contains('is-open')) closeAgendaSheet();
+  calendarPanel.hidden = showingMap;
+  mapView.hidden = !showingMap;
+  calendarTabButton.classList.toggle('is-active', !showingMap);
+  calendarTabButton.setAttribute('aria-pressed', String(!showingMap));
+  mapTabButton.classList.toggle('is-active', showingMap);
+  mapTabButton.setAttribute('aria-pressed', String(showingMap));
+  if (showingMap) renderMapOverview();
+}
+
 function render() {
   renderCalendar();
   renderAgenda();
+  renderMapOverview();
 }
 
 function openAgendaSheet() {
@@ -1164,6 +1348,8 @@ function toggleTheme() {
 
 document.querySelector('#previousMonth').addEventListener('click', () => changeMonth(-1));
 document.querySelector('#nextMonth').addEventListener('click', () => changeMonth(1));
+calendarTabButton.addEventListener('click', () => setPrimaryView('calendar'));
+mapTabButton.addEventListener('click', () => setPrimaryView('map'));
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
 addEventButton.addEventListener('click', () => openComposer());
 meetingDayToggle.addEventListener('click', toggleMeetingDay);
@@ -1669,6 +1855,7 @@ document.addEventListener('keydown', (event) => {
 
 applyTheme(document.documentElement.dataset.theme || 'light');
 window.addEventListener('resize', fitCalendarTitle);
+setPrimaryView(primaryView);
 render();
 Promise.resolve(window.sharedCalendar?.init({
   onEvents(nextSharedEvents) {
