@@ -633,7 +633,7 @@ legend { margin-bottom: 8px; }
   .together-counter { min-width: 68px; min-height: 46px; padding-inline: 9px; border-radius: 15px; }
   .account-button { max-width: 76px; padding: 0 10px; }
   .calendar-panel { display: flex; min-height: 0; padding: 17px 7px 11px; flex: 1 0 auto; flex-direction: column; border-radius: 22px; }
-  .calendar-panel:not([hidden]) { margin-top: 8px; }
+  .calendar-panel:not([hidden]) { margin-top: 16px; }
   .map-panel, .memo-panel { min-height: 0; padding: 17px 12px max(108px, calc(92px + env(safe-area-inset-bottom))); flex: 1 0 auto; border-radius: 22px; }
   .map-overview { height: clamp(220px, 30dvh, 280px); min-height: clamp(220px, 30dvh, 280px); }
   .map-overview:empty::before { min-height: clamp(220px, 30dvh, 280px); }
