@@ -19,6 +19,7 @@
 - 날짜를 눌러 일정 확인
 - 날짜를 누르거나 달력을 위로 밀면 월 전체를 세로로 요약하고 선택 날짜의 일정을 바로 아래에 표시
 - 요약된 달력을 아래로 밀거나 닫기 버튼을 누르면 화면을 채우는 달력으로 복귀
+- 축소 달력이나 일정 패널을 아래로 밀면 화면을 채우는 달력으로 복귀
 - 날짜를 길게 누른 뒤 마지막 날짜까지 끌어서 기간을 선택하면 일정 패널 자동 열기
 - 달력의 일정 막대를 길게 누른 뒤 다른 날짜로 끌어서 기간과 시간을 유지한 채 이동
 - 선택한 날짜 아래의 버튼으로 일정 추가
@@ -41,7 +42,8 @@
 - 만난 날마다 여러 방문 장소를 순서대로 기록하고 두 사람이 함께 확인
 - 장소 이름·주소·메모를 저장하고 네이버 지도에서 위치 또는 현재 위치 선택
 - 장소 선택 지도를 전체 화면으로 확대해 정확한 위치를 터치로 선택
-- 도로명·지번 주소를 검색해 결과를 누르면 주소와 지도 마커를 자동 입력
+- 전체 화면 지도의 `축소` 버튼 또는 휴대폰 뒤로가기로 원래 크기로 복귀
+- 가게명·도로명·지번을 검색해 결과를 누르면 장소 이름, 주소와 지도 마커를 자동 입력
 - 하단 `캘린더 / 지도` 탭으로 전환하고 지도에서 모든 방문 장소를 날짜순으로 확인
 - 방문 지도를 전체 화면으로 확대하고 주소를 검색하거나 지도에서 선택한 위치의 주소 확인
 - 저장된 방문 장소 마커를 눌러 장소 이름·주소·방문일 확인
@@ -62,6 +64,7 @@
 - 일정 데이터의 기기 내 저장
 - 이메일 로그인과 커플 초대 코드
 - 두 휴대폰 사이의 실시간 일정 동기화
+- 휴대폰 뒤로가기로 지도 확대, 장소·일정 입력, 날짜 일정 화면을 차례로 닫고 첫 달력에서 한 번 더 누르면 앱 종료
 
 ## 사용 방법
 
@@ -92,6 +95,7 @@ icon-maskable-512.png Android 적응형(마스커블) 아이콘
 supabase-config.js     Supabase 프로젝트 연결 정보
 map-config.js          네이버 지도 Client ID 설정
 shared-calendar.js     로그인, 커플 연결, 공유 동기화
+supabase/functions/naver-place-search/index.ts  가게명 검색용 보안 프록시
 supabase-schema.sql    데이터베이스 테이블과 보안 정책
 supabase-multi-calendar-migration.sql  기존 DB의 다중 캘린더 마이그레이션
 supabase-delete-calendar-migration.sql 공유 캘린더 삭제/나가기 마이그레이션
@@ -122,6 +126,17 @@ supabase-meeting-places-migration.sql 만난 날과 방문 장소 마이그레�
 3. Web 서비스 URL에 배포 오리진 `https://suhk2018.github.io`와 로컬 확인용 `http://127.0.0.1:8765`를 등록합니다.
 4. 발급된 Client ID를 `map-config.js`의 `clientId`에 입력합니다.
 5. Client Secret은 브라우저 파일이나 공개 GitHub 저장소에 입력하지 않습니다.
+
+### 가게 이름 검색 연결
+
+가게명 검색은 NAVER Developers의 **검색 > 지역 검색** API를 사용하며 지도용 Client ID와는 별도입니다.
+
+1. [NAVER Developers](https://developers.naver.com/apps/#/register)에서 애플리케이션을 만들고 **검색** API를 선택합니다.
+2. Supabase Edge Function Secrets에 `NAVER_SEARCH_CLIENT_ID`, `NAVER_SEARCH_CLIENT_SECRET`을 저장합니다.
+3. `supabase functions deploy naver-place-search --project-ref lkwnftupcknlyxodslyu`로 함수를 배포합니다.
+4. Secret은 `map-config.js`, `supabase-config.js` 또는 GitHub 저장소에 넣지 않습니다.
+
+함수가 연결되면 일정의 장소 추가 지도와 하단 방문 지도에서 상호명으로 최대 5개의 업체·기관을 검색할 수 있습니다. 연결 전에는 도로명·지번 주소 검색으로 자동 전환됩니다.
 
 Client ID가 없어도 장소 이름·주소·메모는 저장할 수 있으며, 지도 위치 선택만 비활성화됩니다.
 

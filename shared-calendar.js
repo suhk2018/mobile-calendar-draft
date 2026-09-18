@@ -586,6 +586,7 @@
     selectCalendar,
     meetingTablesReady: () => meetingTablesAvailable,
     isConnected: () => Boolean(session && activeCalendar),
+    accessToken: () => session?.access_token || '',
     openSettings: openSheet,
   };
 })();

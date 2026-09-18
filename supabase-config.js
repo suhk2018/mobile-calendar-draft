@@ -3,4 +3,5 @@
 window.SUPABASE_CONFIG = {
   url: 'https://lkwnftupcknlyxodslyu.supabase.co',
   anonKey: 'sb_publishable_PS4m_K1vWzjMeavR3hZCOw_QHJvH13H',
+  placeSearchEndpoint: 'https://lkwnftupcknlyxodslyu.supabase.co/functions/v1/naver-place-search',
 };

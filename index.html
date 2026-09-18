@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=44" />
-    <link rel="icon" href="icon.svg?v=44" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=44" />
-    <link rel="stylesheet" href="styles.css?v=44" />
+    <link rel="manifest" href="manifest.webmanifest?v=45" />
+    <link rel="icon" href="icon.svg?v=45" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=45" />
+    <link rel="stylesheet" href="styles.css?v=45" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -69,7 +69,7 @@
         <p class="map-view-description" id="mapViewDescription">만난 날에 기록한 장소를 한눈에 볼 수 있어요.</p>
         <div class="overview-map-frame" id="overviewMapFrame">
           <div class="place-map-search" role="search">
-            <input id="overviewMapQuery" type="search" autocomplete="off" placeholder="도로명·지번 주소 검색" aria-label="방문 지도 주소 검색" />
+            <input id="overviewMapQuery" type="search" autocomplete="off" placeholder="가게명·도로명·지번 검색" aria-label="방문 지도 장소 검색" />
             <button id="searchOverviewMap" type="button">검색</button>
           </div>
           <div class="place-search-results" id="overviewSearchResults" aria-live="polite" hidden></div>
@@ -195,7 +195,7 @@
           </div>
           <div class="place-map-frame" id="placeMapFrame">
             <div class="place-map-search" id="placeMapSearch" role="search">
-              <input id="placeMapQuery" type="search" autocomplete="off" placeholder="도로명·지번 주소 검색" aria-label="지도 주소 검색" />
+              <input id="placeMapQuery" type="search" autocomplete="off" placeholder="가게명·도로명·지번 검색" aria-label="지도 장소 검색" />
               <button id="searchPlaceMap" type="button">검색</button>
             </div>
             <div class="place-search-results" id="placeSearchResults" aria-live="polite" hidden></div>
@@ -357,9 +357,9 @@
       </button>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=44"></script>
-    <script src="map-config.js?v=44"></script>
-    <script src="shared-calendar.js?v=44"></script>
-    <script src="app.js?v=44"></script>
+    <script src="supabase-config.js?v=45"></script>
+    <script src="map-config.js?v=45"></script>
+    <script src="shared-calendar.js?v=45"></script>
+    <script src="app.js?v=45"></script>
   </body>
 </html>
