@@ -1850,7 +1850,7 @@ function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   const isDark = theme === 'dark';
   themeButton.setAttribute('aria-label', isDark ? '라이트 모드로 전환' : '다크 모드로 전환');
-  document.querySelector('meta[name="theme-color"]').setAttribute('content', isDark ? '#101214' : '#3182f6');
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', isDark ? '#101214' : '#f4f6f8');
 }
 
 function toggleTheme() {
