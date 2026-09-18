@@ -148,6 +148,8 @@ let overviewMapMarkers = new Map();
 let overviewMapInfoWindow = null;
 let overviewSearchMarker = null;
 let overviewMapRenderToken = 0;
+let pendingOverviewPlaceKey = '';
+const mapDateGroupExpanded = new Map();
 const holidaysByYear = new Map();
 const maxCalendarEventLanes = 5;
 
@@ -350,7 +352,7 @@ function anniversaryDayLabel(firstMetOn) {
   if (!firstMetOn) return '';
   const firstDay = fromKey(firstMetOn);
   const dayDifference = Math.round((today - firstDay) / 86400000);
-  return dayDifference >= 0 ? `D+${dayDifference + 1}` : `D${dayDifference}`;
+  return dayDifference >= 0 ? `${dayDifference + 1}일째` : `만나기 ${Math.abs(dayDifference)}일 전`;
 }
 
 function formatAnniversaryDetail(firstMetOn) {
@@ -779,7 +781,7 @@ function renderMeetingPlaces(meetingDay, canCheckMeetingDay) {
     const item = document.createElement('button');
     item.type = 'button';
     item.className = 'meeting-place-item';
-    item.setAttribute('aria-label', `${place.name} 장소 수정`);
+    item.setAttribute('aria-label', `${place.name} 지도에서 보기`);
     const order = document.createElement('span');
     order.className = 'meeting-place-order';
     order.textContent = String(index + 1);
@@ -798,11 +800,25 @@ function renderMeetingPlaces(meetingDay, canCheckMeetingDay) {
       memo.textContent = place.memo;
       copy.append(memo);
     }
-    const edit = document.createElement('span');
-    edit.className = 'meeting-place-edit';
-    edit.textContent = '수정';
-    item.append(order, copy, edit);
-    item.addEventListener('click', () => openPlaceSheet(place));
+    const mapLink = document.createElement('span');
+    mapLink.className = 'meeting-place-map-link';
+    mapLink.textContent = '지도';
+    item.append(order, copy, mapLink);
+    item.addEventListener('click', () => {
+      if (!placeHasCoordinates(place)) {
+        showCalendarToast('이 장소에는 아직 지도 위치가 없어요. 위치를 먼저 지정해 주세요.');
+        openPlaceSheet(place);
+        return;
+      }
+      pendingOverviewPlaceKey = String(place.id || `${meetingDay.date}-${index}-${place.name}`);
+      setPrimaryView('map', true);
+    });
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.className = 'meeting-place-edit-button';
+    editButton.textContent = '✎';
+    editButton.setAttribute('aria-label', `${place.name} 장소 수정`);
+    editButton.addEventListener('click', () => openPlaceSheet(place));
     const controls = document.createElement('span');
     controls.className = 'meeting-place-order-controls';
     const createMoveButton = (direction, label, symbol) => {
@@ -833,7 +849,7 @@ function renderMeetingPlaces(meetingDay, canCheckMeetingDay) {
       createMoveButton(-1, '앞으로 이동', '↑'),
       createMoveButton(1, '뒤로 이동', '↓'),
     );
-    row.append(item, controls);
+    row.append(item, editButton, controls);
     meetingPlaceList.append(row);
   });
 }
@@ -1042,24 +1058,35 @@ function renderOverviewPlaceList(places) {
     if (!placesByDate.has(place.meetingDate)) placesByDate.set(place.meetingDate, []);
     placesByDate.get(place.meetingDate).push(place);
   });
-  placesByDate.forEach((datePlaces, dateKey) => {
+  Array.from(placesByDate.entries()).forEach(([dateKey, datePlaces], groupIndex) => {
     const group = document.createElement('section');
     group.className = 'map-place-date-group';
     const heading = document.createElement('button');
     heading.type = 'button';
     heading.className = 'map-place-date-heading';
     const date = fromKey(dateKey);
-    heading.innerHTML = `<span>${new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }).format(date)}</span><small>${datePlaces.length}곳 · 지도에서 보기</small>`;
-    heading.addEventListener('click', () => focusOverviewDate(datePlaces));
-    group.append(heading);
-    datePlaces.forEach((place, index) => {
+    const isExpanded = mapDateGroupExpanded.has(dateKey) ? mapDateGroupExpanded.get(dateKey) : groupIndex === 0;
+    heading.setAttribute('aria-expanded', String(isExpanded));
+    heading.innerHTML = `<span>${new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }).format(date)}</span><small>${datePlaces.length}곳 <b aria-hidden="true">⌄</b></small>`;
+    const placeGroup = document.createElement('div');
+    placeGroup.className = 'map-place-date-items';
+    placeGroup.hidden = !isExpanded;
+    heading.addEventListener('click', () => {
+      const nextExpanded = heading.getAttribute('aria-expanded') !== 'true';
+      mapDateGroupExpanded.set(dateKey, nextExpanded);
+      heading.setAttribute('aria-expanded', String(nextExpanded));
+      placeGroup.hidden = !nextExpanded;
+    });
+    group.append(heading, placeGroup);
+    datePlaces.forEach((place) => {
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'map-place-card';
       card.dataset.placeKey = place.mapKey;
       const pin = document.createElement('span');
       pin.className = 'map-place-pin';
-      pin.textContent = placeHasCoordinates(place) ? String(index + 1) : '♡';
+      pin.textContent = placeHasCoordinates(place) ? '⌖' : '♡';
+      pin.setAttribute('aria-hidden', 'true');
       const copy = document.createElement('span');
       copy.className = 'map-place-card-copy';
       const name = document.createElement('strong');
@@ -1069,7 +1096,7 @@ function renderOverviewPlaceList(places) {
       copy.append(name, detail);
       card.append(pin, copy);
       card.addEventListener('click', () => focusOverviewPlace(place));
-      group.append(card);
+      placeGroup.append(card);
     });
     mapPlaceSummary.append(group);
   });
@@ -1139,6 +1166,11 @@ async function initializeOverviewMap(places) {
     window.setTimeout(() => {
       if (overviewMapInstance?.getZoom() > 15) overviewMapInstance.setZoom(15);
     }, 100);
+  }
+  if (pendingOverviewPlaceKey) {
+    const pendingPlace = mappedPlaces.find((place) => place.mapKey === pendingOverviewPlaceKey);
+    pendingOverviewPlaceKey = '';
+    if (pendingPlace) window.setTimeout(() => focusOverviewPlace(pendingPlace), 180);
   }
 }
 
@@ -1392,7 +1424,8 @@ function updateCalendarHeading() {
   calendarEyebrow.textContent = calendarScope === 'shared' ? 'TOGETHER CALENDAR' : 'MY CALENDAR';
   const dDay = calendarScope === 'shared' ? anniversaryDayLabel(activeCalendar?.first_met_on) : '';
   togetherCounter.hidden = !dDay;
-  togetherDayCount.textContent = dDay;
+  togetherDayCount.textContent = dDay ? `${dDay} ♥` : '';
+  togetherCounter.setAttribute('aria-label', dDay ? `${dDay}, 다가오는 기념일 보기` : '다가오는 기념일 보기');
   composerScopeLabel.textContent = calendarScope === 'shared' ? (activeName || 'TOGETHER SCHEDULE') : 'MY SCHEDULE';
   fitCalendarTitle();
 }
