@@ -948,19 +948,26 @@ function createMapInfoCard(title, detail, meta = '') {
 
 function resizeNaverMapAfterLayout(map, element, center, expanded) {
   if (!map || !window.naver?.maps) return;
-  if (!expanded) {
+  if (expanded) {
+    element.style.setProperty('width', '100%', 'important');
+    element.style.setProperty('height', '100%', 'important');
+    element.style.setProperty('min-height', '0', 'important');
+  } else {
     element.style.removeProperty('width');
     element.style.removeProperty('height');
+    element.style.removeProperty('min-height');
   }
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      const width = element.clientWidth;
-      const height = element.clientHeight;
-      if (!width || !height) return;
-      map.setSize(new window.naver.maps.Size(width, height));
-      map.setCenter(center);
-    });
-  });
+  const syncSize = () => {
+    const bounds = element.getBoundingClientRect();
+    const width = Math.round(bounds.width);
+    const height = Math.round(bounds.height);
+    if (!width || !height) return;
+    map.setSize(new window.naver.maps.Size(width, height));
+    map.setCenter(center);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(syncSize));
+  window.setTimeout(syncSize, 100);
+  window.setTimeout(syncSize, 320);
 }
 
 function showOverviewMapNotice(title, description) {
