@@ -71,6 +71,9 @@ const placeMemo = document.querySelector('#placeMemo');
 const placeLatitude = document.querySelector('#placeLatitude');
 const placeLongitude = document.querySelector('#placeLongitude');
 const placeMap = document.querySelector('#placeMap');
+const placeMapFrame = document.querySelector('#placeMapFrame');
+const expandPlaceMapButton = document.querySelector('#expandPlaceMap');
+const placeMapGuide = document.querySelector('.place-map-guide');
 const placeMapNotice = document.querySelector('#placeMapNotice');
 const placeCoordinateLabel = document.querySelector('#placeCoordinateLabel');
 const useCurrentLocationButton = document.querySelector('#useCurrentLocation');
@@ -921,7 +924,7 @@ async function initializeOverviewMap(places) {
   overviewMapInstance = new window.naver.maps.Map(mapOverview, {
     center: new window.naver.maps.LatLng(initial.latitude, initial.longitude),
     zoom: mappedPlaces.length === 1 ? 16 : 11,
-    zoomControl: true,
+    zoomControl: false,
   });
   overviewMapMarkers = new Map();
   if (!mappedPlaces.length) {
@@ -1243,6 +1246,7 @@ async function initializePlaceMap() {
     await loadNaverMap();
   } catch (error) {
     placeMap.classList.remove('is-ready');
+    expandPlaceMapButton.hidden = true;
     useCurrentLocationButton.disabled = true;
     placeMapNotice.textContent = error.message === 'NAVER_MAP_NOT_CONFIGURED'
       ? '네이버 지도 Client ID를 연결하면 지도에서 위치를 고를 수 있어요. 지금은 장소 이름과 주소를 직접 저장할 수 있습니다.'
@@ -1251,12 +1255,13 @@ async function initializePlaceMap() {
     return;
   }
   placeMap.classList.add('is-ready');
+  expandPlaceMapButton.hidden = false;
   const coordinates = placeCoordinates();
   const center = coordinates || { latitude: 37.5666103, longitude: 126.9783882 };
   placeMapInstance = new window.naver.maps.Map(placeMap, {
     center: new window.naver.maps.LatLng(center.latitude, center.longitude),
     zoom: coordinates ? 16 : 12,
-    zoomControl: true,
+    zoomControl: false,
   });
   placeMapMarker = null;
   if (coordinates) setPlacePosition(coordinates.latitude, coordinates.longitude);
@@ -1264,6 +1269,22 @@ async function initializePlaceMap() {
     const latitude = typeof event.coord.lat === 'function' ? event.coord.lat() : event.coord.y;
     const longitude = typeof event.coord.lng === 'function' ? event.coord.lng() : event.coord.x;
     setPlacePosition(latitude, longitude, true);
+  });
+}
+
+function setPlaceMapExpanded(expanded) {
+  if (expanded && (!placeMapInstance || !placeMap.classList.contains('is-ready'))) return;
+  placeMapFrame.classList.toggle('is-expanded', expanded);
+  placeSheet.classList.toggle('has-expanded-map', expanded);
+  document.body.classList.toggle('is-place-map-expanded', expanded);
+  expandPlaceMapButton.setAttribute('aria-expanded', String(expanded));
+  expandPlaceMapButton.querySelector('span').textContent = expanded ? '선택 완료' : '크게 보기';
+  placeMapGuide.hidden = !expanded;
+  if (!placeMapInstance || !window.naver?.maps) return;
+  requestAnimationFrame(() => {
+    placeMapInstance.setSize(new window.naver.maps.Size(placeMap.clientWidth, placeMap.clientHeight));
+    const coordinates = placeCoordinates();
+    if (coordinates) placeMapInstance.panTo(new window.naver.maps.LatLng(coordinates.latitude, coordinates.longitude));
   });
 }
 
@@ -1282,6 +1303,12 @@ function openPlaceSheet(place = null) {
   placeMapNotice.hidden = true;
   placeMap.replaceChildren();
   placeMap.classList.remove('is-ready');
+  placeMapFrame.classList.remove('is-expanded');
+  placeSheet.classList.remove('has-expanded-map');
+  expandPlaceMapButton.hidden = true;
+  expandPlaceMapButton.setAttribute('aria-expanded', 'false');
+  expandPlaceMapButton.querySelector('span').textContent = '크게 보기';
+  placeMapGuide.hidden = true;
   updatePlaceCoordinateLabel();
   placeBackdrop.hidden = false;
   placeSheet.classList.add('is-open');
@@ -1292,6 +1319,7 @@ function openPlaceSheet(place = null) {
 }
 
 function closePlaceSheet() {
+  setPlaceMapExpanded(false);
   placeSheet.classList.remove('is-open');
   editingMeetingPlace = null;
   placeMapInstance = null;
@@ -1359,6 +1387,7 @@ agendaBackdrop.addEventListener('click', closeAgendaSheet);
 composerBackdrop.addEventListener('click', closeComposer);
 closePlaceSheetButton.addEventListener('click', closePlaceSheet);
 placeBackdrop.addEventListener('click', closePlaceSheet);
+expandPlaceMapButton.addEventListener('click', () => setPlaceMapExpanded(!placeMapFrame.classList.contains('is-expanded')));
 useCurrentLocationButton.addEventListener('click', () => {
   if (!navigator.geolocation) {
     placeFormError.textContent = '이 기기에서는 현재 위치를 사용할 수 없어요.';
@@ -1847,6 +1876,7 @@ eventForm.addEventListener('submit', async (event) => {
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
+  if (placeMapFrame.classList.contains('is-expanded')) return setPlaceMapExpanded(false);
   if (placeSheet.classList.contains('is-open')) return closePlaceSheet();
   if (composer.classList.contains('is-open')) return closeComposer();
   if (anniversarySheet.classList.contains('is-open')) return closeAnniversarySheet();
