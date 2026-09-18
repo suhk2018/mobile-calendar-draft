@@ -171,6 +171,16 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .map-info-card strong { overflow: hidden; font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }
 .map-info-card span { color: var(--text-secondary); font-size: .68rem; line-height: 1.45; }
 .map-info-card small { color: var(--pink); font-size: .64rem; font-weight: 800; }
+.map-info-link { display: inline-flex; min-height: 30px; margin-top: 4px; padding: 0 10px; align-items: center; justify-content: center; border-radius: 9px; background: var(--primary-soft); color: var(--primary-text); font-size: .66rem; font-weight: 800; text-decoration: none; }
+.nearby-place-info-card { min-width: min(270px, calc(100vw - 44px)); max-width: min(290px, calc(100vw - 32px)); max-height: min(300px, 52dvh); padding: 11px; gap: 7px; overflow-y: auto; }
+.nearby-place-info-card .nearby-place-address { overflow: hidden; color: var(--text-tertiary); font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
+.nearby-place-options { display: grid; gap: 5px; }
+.nearby-place-option { display: grid; width: 100%; padding: 8px 9px; gap: 2px; border: 0; border-radius: 10px; background: var(--hover); color: var(--text); text-align: left; }
+.nearby-place-option:hover, .nearby-place-option:focus-visible { background: var(--primary-soft); outline: none; }
+.nearby-place-option b, .nearby-place-option span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nearby-place-option b { font-size: .7rem; }
+.nearby-place-option small { color: var(--primary-text); font-size: .57rem; }
+.nearby-place-option span { color: var(--text-tertiary); font-size: .59rem; }
 .map-place-summary { display: grid; gap: 14px; margin-top: 12px; }
 .map-place-date-group { display: grid; gap: 7px; }
 .map-place-date-heading { display: flex; width: 100%; padding: 3px 4px 2px; align-items: center; justify-content: space-between; gap: 10px; border: 0; background: transparent; color: var(--text); text-align: left; }

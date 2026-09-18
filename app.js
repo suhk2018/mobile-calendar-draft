@@ -148,6 +148,8 @@ let overviewMapMarkers = new Map();
 let overviewMapInfoWindow = null;
 let overviewSearchMarker = null;
 let overviewMapRenderToken = 0;
+let overviewCoordinateSearchToken = 0;
+let placeReverseLookupToken = 0;
 let pendingOverviewPlaceKey = '';
 const mapDateGroupExpanded = new Map();
 const holidaysByYear = new Map();
@@ -962,6 +964,100 @@ function createMapInfoCard(title, detail, meta = '') {
   return card;
 }
 
+function distanceBetweenCoordinates(latitudeA, longitudeA, latitudeB, longitudeB) {
+  const toRadians = (degrees) => degrees * Math.PI / 180;
+  const earthRadius = 6371000;
+  const latitudeDelta = toRadians(latitudeB - latitudeA);
+  const longitudeDelta = toRadians(longitudeB - longitudeA);
+  const a = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(toRadians(latitudeA)) * Math.cos(toRadians(latitudeB)) * Math.sin(longitudeDelta / 2) ** 2;
+  const clamped = Math.min(1, Math.max(0, a));
+  return earthRadius * 2 * Math.atan2(Math.sqrt(clamped), Math.sqrt(1 - clamped));
+}
+
+function nearbyPlaceCandidates(items, latitude, longitude) {
+  return items
+    .map((item) => {
+      const candidateLatitude = Number(item.y);
+      const candidateLongitude = Number(item.x);
+      if (!Number.isFinite(candidateLatitude) || !Number.isFinite(candidateLongitude)) return null;
+      return {
+        ...item,
+        distance: distanceBetweenCoordinates(latitude, longitude, candidateLatitude, candidateLongitude),
+      };
+    })
+    .filter((item) => item && item.distance <= 2000)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 3);
+}
+
+function reverseGeocodeContext(response) {
+  const address = response?.v2?.address || {};
+  const results = response?.v2?.results || [];
+  const detailedResult = results.find((result) => result?.name === 'roadaddr') || results.find((result) => result?.land);
+  const buildingName = String(detailedResult?.land?.addition0?.value || '').trim();
+  const areaName = String(detailedResult?.region?.area3?.name || detailedResult?.region?.area2?.name || '').trim();
+  const addressText = address.roadAddress || address.jibunAddress || '선택한 지도 위치';
+  const searchQuery = [buildingName, areaName].filter(Boolean).join(' ') || addressText;
+  return { addressText, buildingName, searchQuery };
+}
+
+function formatPlaceDistance(distance) {
+  return distance < 1000 ? `${Math.max(1, Math.round(distance))}m` : `${(distance / 1000).toFixed(1)}km`;
+}
+
+function createNearbyPlaceInfoCard(candidates, context) {
+  const card = document.createElement('div');
+  card.className = 'map-info-card nearby-place-info-card';
+  const heading = document.createElement('strong');
+  heading.textContent = context.buildingName || '이 근처 장소';
+  const address = document.createElement('span');
+  address.className = 'nearby-place-address';
+  address.textContent = context.addressText;
+  const list = document.createElement('div');
+  list.className = 'nearby-place-options';
+  candidates.forEach((candidate) => {
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = 'nearby-place-option';
+    const name = document.createElement('b');
+    name.textContent = stripSearchMarkup(candidate.title || '') || '장소 이름 없음';
+    const meta = document.createElement('small');
+    meta.textContent = [candidate.category, formatPlaceDistance(candidate.distance)].filter(Boolean).join(' · ');
+    const detail = document.createElement('span');
+    detail.textContent = candidate.roadAddress || candidate.jibunAddress || context.addressText;
+    option.append(name, meta, detail);
+    option.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const latitude = Number(candidate.y);
+      const longitude = Number(candidate.x);
+      const position = new window.naver.maps.LatLng(latitude, longitude);
+      overviewSearchMarker?.setPosition(position);
+      overviewMapInstance?.panTo(position);
+      if (overviewMapInstance?.getZoom() < 16) overviewMapInstance.setZoom(16);
+      const selectedCard = createMapInfoCard(
+        stripSearchMarkup(candidate.title || '') || context.buildingName || '선택한 장소',
+        candidate.roadAddress || candidate.jibunAddress || context.addressText,
+        [candidate.category, formatPlaceDistance(candidate.distance)].filter(Boolean).join(' · '),
+      );
+      if (candidate.link) {
+        const link = document.createElement('a');
+        link.className = 'map-info-link';
+        link.href = candidate.link;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = '네이버에서 보기';
+        selectedCard.append(link);
+      }
+      overviewMapInfoWindow?.setContent(selectedCard);
+      overviewMapInfoWindow?.open(overviewMapInstance, overviewSearchMarker || position);
+    });
+    list.append(option);
+  });
+  card.append(heading, address, list);
+  return card;
+}
+
 function resizeNaverMapAfterLayout(map, element, center, expanded) {
   if (!map || !window.naver?.maps) return;
   if (expanded) {
@@ -1176,13 +1272,29 @@ async function initializeOverviewMap(places) {
 
 function showOverviewCoordinateInfo(latitude, longitude) {
   if (!window.naver?.maps?.Service || !overviewMapInstance) return;
+  const searchToken = ++overviewCoordinateSearchToken;
   const position = new window.naver.maps.LatLng(latitude, longitude);
   if (!overviewSearchMarker) overviewSearchMarker = new window.naver.maps.Marker({ map: overviewMapInstance, position });
   else overviewSearchMarker.setPosition(position);
-  window.naver.maps.Service.reverseGeocode({ coords: position }, (status, response) => {
-    const address = status === window.naver.maps.Service.Status.OK ? response?.v2?.address : null;
-    const addressText = address?.roadAddress || address?.jibunAddress || '선택한 지도 위치';
-    overviewMapInfoWindow?.setContent(createMapInfoCard('이 위치의 주소', addressText));
+  overviewMapInfoWindow?.setContent(createMapInfoCard('주변 장소 찾는 중', '건물명과 가까운 가게를 확인하고 있어요.'));
+  overviewMapInfoWindow?.open(overviewMapInstance, overviewSearchMarker);
+  window.naver.maps.Service.reverseGeocode({ coords: position, orders: 'roadaddr,addr' }, async (status, response) => {
+    if (searchToken !== overviewCoordinateSearchToken) return;
+    const context = status === window.naver.maps.Service.Status.OK
+      ? reverseGeocodeContext(response)
+      : { addressText: '선택한 지도 위치', buildingName: '', searchQuery: '' };
+    let candidates = [];
+    if (context.searchQuery) {
+      try {
+        candidates = nearbyPlaceCandidates(await fetchNaverPlaceResults(context.searchQuery), latitude, longitude);
+      } catch (error) {
+        console.warn('주변 장소 후보를 불러오지 못했어요.', error);
+      }
+    }
+    if (searchToken !== overviewCoordinateSearchToken) return;
+    overviewMapInfoWindow?.setContent(candidates.length
+      ? createNearbyPlaceInfoCard(candidates, context)
+      : createMapInfoCard(context.buildingName || '이 위치의 주소', context.addressText, '가까운 가게 후보를 찾지 못했어요'));
     overviewMapInfoWindow?.open(overviewMapInstance, overviewSearchMarker);
   });
 }
@@ -1579,14 +1691,22 @@ function updatePlaceCoordinateLabel() {
 
 function reverseGeocodePlace(latitude, longitude) {
   if (!window.naver?.maps?.Service) return;
+  const lookupToken = ++placeReverseLookupToken;
   const coords = new window.naver.maps.LatLng(latitude, longitude);
-  window.naver.maps.Service.reverseGeocode({ coords }, (status, response) => {
-    if (status !== window.naver.maps.Service.Status.OK || !response?.v2?.address) return;
-    const address = response.v2.address.roadAddress || response.v2.address.jibunAddress || '';
-    if (address) {
-      placeAddress.value = address;
-      placeMapQuery.value = address;
-      showPlaceMapInfo(placeName.value.trim() || '선택한 위치', address);
+  window.naver.maps.Service.reverseGeocode({ coords, orders: 'roadaddr,addr' }, async (status, response) => {
+    if (lookupToken !== placeReverseLookupToken || status !== window.naver.maps.Service.Status.OK) return;
+    const context = reverseGeocodeContext(response);
+    if (context.addressText && context.addressText !== '선택한 지도 위치') {
+      placeAddress.value = context.addressText;
+      placeMapQuery.value = context.addressText;
+      showPlaceMapInfo(context.buildingName || placeName.value.trim() || '선택한 위치', context.addressText);
+    }
+    if (!context.searchQuery) return;
+    try {
+      const candidates = nearbyPlaceCandidates(await fetchNaverPlaceResults(context.searchQuery), latitude, longitude);
+      if (lookupToken === placeReverseLookupToken && candidates.length) renderPlaceSearchResults(candidates);
+    } catch (error) {
+      console.warn('선택한 위치의 가게 후보를 불러오지 못했어요.', error);
     }
   });
 }
