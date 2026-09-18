@@ -619,19 +619,19 @@ legend { margin-bottom: 8px; }
 }
 
 @media (max-width: 719px) {
-  .app-shell { display: flex; min-height: 100svh; min-height: 100dvh; padding: max(22px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(96px, calc(82px + env(safe-area-inset-bottom))) max(14px, env(safe-area-inset-left)); flex-direction: column; }
+  .app-shell { display: flex; min-height: 100svh; min-height: 100dvh; padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(96px, calc(82px + env(safe-area-inset-bottom))) max(14px, env(safe-area-inset-left)); flex-direction: column; }
   .app-shell.is-agenda-open { height: 100svh; height: 100dvh; overflow: hidden; }
-  .topbar { margin-bottom: 14px; padding: 0 2px; flex: 0 0 auto; }
+  .topbar { margin-bottom: 10px; padding: 0 2px; flex: 0 0 auto; }
   .brand-group { gap: 9px; }
   .brand-group h1.is-shared-title { font-size: 1.08rem; }
   .together-counter { min-width: 68px; min-height: 46px; padding-inline: 9px; border-radius: 15px; }
   .account-button { max-width: 76px; padding: 0 10px; }
   .calendar-panel { display: flex; min-height: 0; padding: 17px 7px 11px; flex: 1 0 auto; flex-direction: column; border-radius: 22px; }
   .map-panel, .memo-panel { min-height: 0; padding: 17px 12px max(108px, calc(92px + env(safe-area-inset-bottom))); flex: 1 0 auto; border-radius: 22px; }
-  .map-overview { height: clamp(300px, 45dvh, 430px); min-height: clamp(300px, 45dvh, 430px); }
-  .map-overview:empty::before { min-height: clamp(300px, 45dvh, 430px); }
-  .map-overview-placeholder { min-height: clamp(300px, 45dvh, 430px); }
-  .map-place-summary { max-height: 30dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .map-overview { height: clamp(220px, 30dvh, 280px); min-height: clamp(220px, 30dvh, 280px); }
+  .map-overview:empty::before { min-height: clamp(220px, 30dvh, 280px); }
+  .map-overview-placeholder { min-height: clamp(220px, 30dvh, 280px); }
+  .map-place-summary { max-height: none; overflow: visible; }
   .bottom-navigation { bottom: max(8px, env(safe-area-inset-bottom)); width: min(calc(100% - 28px), 360px); }
   .month-controls { padding: 0 3px 9px; }
   .calendar-viewport { display: flex; min-height: 0; flex: 1 0 auto; flex-direction: column; }
