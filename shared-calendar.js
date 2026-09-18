@@ -12,8 +12,11 @@
   let calendarsHandler = () => {};
   let calendarActivatedHandler = () => {};
   let meetingDaysHandler = () => {};
+  let notesHandler = () => {};
   let meetingDays = [];
+  let notes = [];
   let meetingTablesAvailable = true;
+  let notesTableAvailable = true;
   const byId = (id) => document.getElementById(id);
   const ui = {};
 
@@ -46,6 +49,17 @@
     };
   }
 
+  function mapNote(row) {
+    const isMine = row.created_by === session?.user?.id;
+    return {
+      id: row.id,
+      content: row.content,
+      createdAt: row.created_at,
+      authorId: row.created_by,
+      authorLabel: isMine ? '나' : '상대방',
+    };
+  }
+
   function legacyMeetingDays(rows) {
     return rows
       .filter((row) => row.memo === meetingDayMemo)
@@ -54,6 +68,10 @@
 
   function meetingTableMissing(error) {
     return ['42P01', 'PGRST200', 'PGRST205'].includes(error?.code) || /meeting_days|meeting_places/i.test(error?.message || '');
+  }
+
+  function notesTableMissing(error) {
+    return ['42P01', 'PGRST200', 'PGRST205'].includes(error?.code) || /couple_notes/i.test(error?.message || '');
   }
 
   function fromDateKey(key) {
@@ -108,6 +126,29 @@
     meetingDaysHandler(meetingDays, true);
   }
 
+  async function loadNotes() {
+    if (!activeCalendar) {
+      notes = [];
+      notesHandler([], notesTableAvailable);
+      return;
+    }
+    const { data, error } = await client
+      .from('couple_notes')
+      .select('id, couple_id, content, created_by, created_at')
+      .eq('couple_id', activeCalendar.id)
+      .order('created_at', { ascending: false });
+    if (error) {
+      if (!notesTableMissing(error)) throw error;
+      notesTableAvailable = false;
+      notes = [];
+      notesHandler([], false);
+      return;
+    }
+    notesTableAvailable = true;
+    notes = data.map(mapNote);
+    notesHandler(notes, true);
+  }
+
   function subscribe() {
     if (channel) client.removeChannel(channel);
     channel = null;
@@ -118,6 +159,9 @@
       channel
         .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_days', filter: `couple_id=eq.${activeCalendar.id}` }, loadMeetingDays)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_places', filter: `couple_id=eq.${activeCalendar.id}` }, loadMeetingDays);
+    }
+    if (notesTableAvailable) {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'couple_notes', filter: `couple_id=eq.${activeCalendar.id}` }, loadNotes);
     }
     channel
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'couples' }, (payload) => {
@@ -141,6 +185,7 @@
     renderAccount();
     await loadEvents();
     await loadMeetingDays();
+    await loadNotes();
     subscribe();
   }
 
@@ -172,6 +217,7 @@
     calendarsHandler(calendars, activeCalendar?.id || null);
     await loadEvents();
     await loadMeetingDays();
+    await loadNotes();
     subscribe();
   }
 
@@ -420,12 +466,13 @@
     }
   }
 
-  async function init({ onEvents, onConnection, onCalendars, onCalendarActivated, onMeetingDays }) {
+  async function init({ onEvents, onConnection, onCalendars, onCalendarActivated, onMeetingDays, onNotes }) {
     eventHandler = onEvents;
     connectionHandler = onConnection || (() => {});
     calendarsHandler = onCalendars || (() => {});
     calendarActivatedHandler = onCalendarActivated || (() => {});
     meetingDaysHandler = onMeetingDays || (() => {});
+    notesHandler = onNotes || (() => {});
     ['accountButton', 'accountBackdrop', 'accountSheet', 'closeAccount', 'connectionNotice', 'signedOutView', 'signedInView', 'authForm', 'authError', 'signUpButton', 'accountEmail', 'signOutButton', 'coupleConnectedView', 'coupleSetupView', 'coupleCount', 'coupleList', 'createCoupleForm', 'joinCoupleForm', 'coupleError'].forEach((id) => { ui[id] = byId(id); });
     ui.accountButton.addEventListener('click', openSheet);
     ui.closeAccount.addEventListener('click', closeSheet);
@@ -582,6 +629,28 @@
     return true;
   }
 
+  async function addMemo(content) {
+    if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
+    if (!notesTableAvailable) throw new Error('공유 메모 저장 공간이 아직 준비되지 않았어요.');
+    const { error } = await client.from('couple_notes').insert({
+      couple_id: activeCalendar.id,
+      created_by: session.user.id,
+      content,
+    });
+    if (error) throw error;
+    await loadNotes();
+    return true;
+  }
+
+  async function deleteMemo(id) {
+    if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
+    if (!notesTableAvailable) throw new Error('공유 메모 저장 공간이 아직 준비되지 않았어요.');
+    const { error } = await client.from('couple_notes').delete().eq('id', id).eq('couple_id', activeCalendar.id);
+    if (error) throw error;
+    await loadNotes();
+    return true;
+  }
+
   async function setBirthday(birthday) {
     if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
     const { error } = await client.rpc('set_member_birthday', { target_couple: activeCalendar.id, new_birthday: birthday });
@@ -598,6 +667,8 @@
     upsertMeetingPlace,
     deleteMeetingPlace,
     reorderMeetingPlaces,
+    addMemo,
+    deleteMemo,
     setBirthday,
     selectCalendar,
     meetingTablesReady: () => meetingTablesAvailable,

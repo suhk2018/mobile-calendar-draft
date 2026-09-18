@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=49" />
-    <link rel="icon" href="icon.svg?v=49" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=49" />
-    <link rel="stylesheet" href="styles.css?v=49" />
+    <link rel="manifest" href="manifest.webmanifest?v=50" />
+    <link rel="icon" href="icon.svg?v=50" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=50" />
+    <link rel="stylesheet" href="styles.css?v=50" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -74,6 +74,27 @@
         </div>
         <div class="map-overview-notice" id="mapOverviewNotice" hidden></div>
         <div class="map-place-summary" id="mapPlaceSummary" aria-live="polite"></div>
+      </section>
+
+      <section class="memo-panel" id="memoView" aria-labelledby="memoViewTitle" hidden>
+        <div class="memo-view-heading">
+          <div>
+            <p class="eyebrow">QUICK MEMO</p>
+            <h2 id="memoViewTitle">우리의 메모</h2>
+          </div>
+          <span class="memo-count" id="memoCount">0개</span>
+        </div>
+        <p class="memo-view-description" id="memoViewDescription">함께 기억할 짧은 내용을 남겨보세요.</p>
+        <form class="quick-memo-form" id="quickMemoForm">
+          <label class="sr-only" for="quickMemoInput">새 메모</label>
+          <textarea id="quickMemoInput" maxlength="500" rows="3" placeholder="잊지 말아야 할 내용을 적어보세요"></textarea>
+          <div class="quick-memo-actions">
+            <small><span id="quickMemoLength">0</span>/500</small>
+            <button type="submit">메모 남기기</button>
+          </div>
+        </form>
+        <p class="form-error memo-form-error" id="memoFormError" role="alert" hidden></p>
+        <div class="memo-list" id="memoList" aria-live="polite"></div>
       </section>
 
       <div class="agenda-backdrop" id="agendaBackdrop" hidden></div>
@@ -256,6 +277,10 @@
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18-5 2V6l5-2 6 2 5-2v14l-5 2-6-2Zm0 0V4m6 16V6"/></svg>
         <span>지도</span>
       </button>
+      <button class="bottom-navigation-button" id="memoTabButton" type="button" aria-pressed="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>
+        <span>메모</span>
+      </button>
     </nav>
 
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
@@ -352,9 +377,9 @@
       </button>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=49"></script>
-    <script src="map-config.js?v=49"></script>
-    <script src="shared-calendar.js?v=49"></script>
-    <script src="app.js?v=49"></script>
+    <script src="supabase-config.js?v=50"></script>
+    <script src="map-config.js?v=50"></script>
+    <script src="shared-calendar.js?v=50"></script>
+    <script src="app.js?v=50"></script>
   </body>
 </html>

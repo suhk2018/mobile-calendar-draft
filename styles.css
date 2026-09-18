@@ -76,7 +76,7 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   padding: max(30px, env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) max(100px, calc(74px + env(safe-area-inset-bottom))) max(22px, env(safe-area-inset-left));
 }
 
-.calendar-panel[hidden], .map-panel[hidden] { display: none !important; }
+.calendar-panel[hidden], .map-panel[hidden], .memo-panel[hidden] { display: none !important; }
 
 .bottom-navigation {
   position: fixed;
@@ -87,7 +87,7 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   width: min(calc(100% - 32px), 360px);
   min-height: 64px;
   padding: 6px;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
   border-radius: 22px;
@@ -155,6 +155,7 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 
 .calendar-panel { overflow: hidden; padding: 20px 16px 16px; }
 .map-panel { display: flex; min-height: 620px; padding: 20px 20px max(108px, calc(90px + env(safe-area-inset-bottom))); flex-direction: column; border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); }
+.memo-panel { display: flex; min-height: 620px; padding: 20px 20px max(108px, calc(90px + env(safe-area-inset-bottom))); flex-direction: column; border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); }
 .map-view-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .map-view-heading h2 { font-size: 1.16rem; }
 .map-place-count { padding: 6px 10px; border-radius: 999px; background: var(--primary-soft); color: var(--primary-text); font-size: .72rem; font-weight: 800; white-space: nowrap; }
@@ -184,6 +185,25 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .map-place-card-copy strong { font-size: .82rem; }
 .map-place-card-copy span { color: var(--text-tertiary); font-size: .66rem; }
 .map-place-date { flex: 0 0 auto; color: var(--text-secondary); font-size: .68rem; font-weight: 750; white-space: nowrap; }
+.memo-view-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.memo-view-heading h2 { font-size: 1.16rem; }
+.memo-count { padding: 6px 10px; border-radius: 999px; background: color-mix(in srgb, var(--pink) 13%, var(--surface)); color: var(--pink); font-size: .72rem; font-weight: 800; white-space: nowrap; }
+.memo-view-description { margin: 8px 0 15px; color: var(--text-secondary); font-size: .75rem; line-height: 1.5; }
+.quick-memo-form { display: grid; padding: 13px; gap: 10px; border: 1px solid var(--border); border-radius: 17px; background: var(--surface-raised); }
+.quick-memo-form textarea { width: 100%; min-height: 76px; padding: 0; resize: none; border: 0; outline: 0; background: transparent; color: var(--text); font-size: .82rem; line-height: 1.55; }
+.quick-memo-form textarea::placeholder { color: var(--text-tertiary); }
+.quick-memo-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.quick-memo-actions small { color: var(--text-tertiary); font-size: .65rem; }
+.quick-memo-actions button { min-height: 38px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--primary); color: #fff; font-size: .72rem; font-weight: 800; }
+.quick-memo-actions button:disabled { cursor: default; opacity: .55; }
+.memo-form-error { margin: 9px 2px 0; }
+.memo-list { display: grid; margin-top: 14px; gap: 9px; }
+.memo-empty { margin: 0; padding: 34px 20px; border: 1px dashed var(--border); border-radius: 17px; color: var(--text-secondary); font-size: .76rem; line-height: 1.55; text-align: center; }
+.memo-card { display: grid; padding: 14px; gap: 10px; border: 1px solid var(--border); border-radius: 17px; background: var(--surface-raised); }
+.memo-card p { margin: 0; color: var(--text); font-size: .8rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.memo-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.memo-card-meta { color: var(--text-tertiary); font-size: .64rem; }
+.memo-delete-button { min-height: 32px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--hover); color: var(--danger); font-size: .67rem; font-weight: 800; }
 .month-controls { padding: 0 2px 12px; }
 .month-controls h2 { min-width: 150px; text-align: center; font-size: 1.16rem; }
 .nav-button { width: 44px; height: 44px; border-radius: 15px; color: var(--text-secondary); font-size: 1.9rem; line-height: 1; }
@@ -606,7 +626,7 @@ legend { margin-bottom: 8px; }
   .together-counter { min-width: 68px; min-height: 46px; padding-inline: 9px; border-radius: 15px; }
   .account-button { max-width: 76px; padding: 0 10px; }
   .calendar-panel { display: flex; min-height: 0; padding: 17px 7px 11px; flex: 1 0 auto; flex-direction: column; border-radius: 22px; }
-  .map-panel { min-height: 0; padding: 17px 12px 12px; flex: 1 0 auto; border-radius: 22px; }
+  .map-panel, .memo-panel { min-height: 0; padding: 17px 12px max(108px, calc(92px + env(safe-area-inset-bottom))); flex: 1 0 auto; border-radius: 22px; }
   .map-overview { height: clamp(300px, 45dvh, 430px); min-height: clamp(300px, 45dvh, 430px); }
   .map-overview:empty::before { min-height: clamp(300px, 45dvh, 430px); }
   .map-overview-placeholder { min-height: clamp(300px, 45dvh, 430px); }
@@ -630,13 +650,13 @@ legend { margin-bottom: 8px; }
   .app-shell.is-agenda-open .calendar-viewport { flex: 0 0 auto; }
   .app-shell.is-agenda-open .weekdays { margin-bottom: 2px; }
   .app-shell.is-agenda-open .weekdays span { padding-block: 2px; }
-  .app-shell.is-agenda-open .calendar-grid { grid-template-rows: repeat(var(--calendar-weeks, 6), clamp(48px, 6.2dvh, 52px)); flex: 0 0 auto; }
-  .app-shell.is-agenda-open .day-cell { min-height: clamp(48px, 6.2dvh, 52px); padding-top: 1px; transition: min-height 200ms ease, background 160ms ease; }
+  .app-shell.is-agenda-open .calendar-grid { grid-template-rows: repeat(var(--calendar-weeks, 6), clamp(44px, 5.7dvh, 48px)); flex: 0 0 auto; }
+  .app-shell.is-agenda-open .day-cell { min-height: clamp(44px, 5.7dvh, 48px); padding-top: 0; transition: min-height 200ms ease, background 160ms ease; }
   .app-shell.is-agenda-open .day-number { width: 25px; height: 25px; font-size: .76rem; }
   .app-shell.is-agenda-open .first-met-label { display: none; }
   .app-shell.is-agenda-open .calendar-event-bar,
   .app-shell.is-agenda-open .calendar-event-bar.is-timed,
-  .app-shell.is-agenda-open .calendar-event-bar.first-met-week { height: 6px; margin-top: calc(28px + var(--event-lane-offset, 0px)); padding: 0 2px; align-items: center; border-radius: 4px; color: transparent; font-size: 0; line-height: 0; }
+  .app-shell.is-agenda-open .calendar-event-bar.first-met-week { height: 6px; margin-top: calc(27px + var(--event-lane-offset, 0px)); padding: 0 2px; align-items: center; border-radius: 4px; color: transparent; font-size: 0; line-height: 0; }
   .app-shell.is-agenda-open .calendar-event-bar.is-timed::before,
   .app-shell.is-agenda-open .calendar-event-bar > * { display: none; }
   .agenda-backdrop { display: none; }

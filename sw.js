@@ -1,18 +1,18 @@
-const CACHE_NAME = 'calendar-v49';
+const CACHE_NAME = 'calendar-v50';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=49',
-  './app.js?v=49',
-  './shared-calendar.js?v=49',
-  './supabase-config.js?v=49',
-  './map-config.js?v=49',
-  './manifest.webmanifest?v=49',
-  './icon.svg?v=49',
-  './apple-touch-icon.png?v=49',
-  './icon-192.png?v=49',
-  './icon-512.png?v=49',
-  './icon-maskable-512.png?v=49',
+  './styles.css?v=50',
+  './app.js?v=50',
+  './shared-calendar.js?v=50',
+  './supabase-config.js?v=50',
+  './map-config.js?v=50',
+  './manifest.webmanifest?v=50',
+  './icon.svg?v=50',
+  './apple-touch-icon.png?v=50',
+  './icon-192.png?v=50',
+  './icon-512.png?v=50',
+  './icon-maskable-512.png?v=50',
 ];
 
 self.addEventListener('install', (event) => {

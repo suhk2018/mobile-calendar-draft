@@ -86,6 +86,15 @@ const calendarPanel = document.querySelector('.calendar-panel');
 const mapView = document.querySelector('#mapView');
 const mapTabButton = document.querySelector('#mapTabButton');
 const calendarTabButton = document.querySelector('#calendarTabButton');
+const memoView = document.querySelector('#memoView');
+const memoTabButton = document.querySelector('#memoTabButton');
+const memoCount = document.querySelector('#memoCount');
+const memoViewDescription = document.querySelector('#memoViewDescription');
+const quickMemoForm = document.querySelector('#quickMemoForm');
+const quickMemoInput = document.querySelector('#quickMemoInput');
+const quickMemoLength = document.querySelector('#quickMemoLength');
+const memoFormError = document.querySelector('#memoFormError');
+const memoList = document.querySelector('#memoList');
 const mapOverview = document.querySelector('#mapOverview');
 const overviewMapFrame = document.querySelector('#overviewMapFrame');
 const expandOverviewMapButton = document.querySelector('#expandOverviewMap');
@@ -99,6 +108,7 @@ const storageKey = 'green-calendar-events-v1';
 const themeStorageKey = 'calendar-theme-v1';
 const calendarScopeStorageKey = 'calendar-scope-v1';
 const primaryViewStorageKey = 'calendar-primary-view-v1';
+const personalMemoStorageKey = 'calendar-quick-memos-v1';
 const appHistoryLayerKey = 'calendarAppLayer';
 const today = startOfDay(new Date());
 let cursor = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -118,6 +128,9 @@ let preferredCalendarScope = localStorage.getItem(calendarScopeStorageKey) === '
 let personalEvents = loadEvents();
 let sharedEvents = [];
 let sharedMeetingDays = [];
+let personalMemos = loadPersonalMemos();
+let sharedMemos = [];
+let memoTablesReady = true;
 let meetingTablesReady = true;
 let events = personalEvents;
 let sharedCalendars = [];
@@ -166,7 +179,20 @@ function calendarIsCompact() {
 }
 
 function visibleCalendarEventLanes() {
-  return calendarIsCompact() ? 3 : maxCalendarEventLanes;
+  return calendarIsCompact() ? 2 : maxCalendarEventLanes;
+}
+
+function loadPersonalMemos() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(personalMemoStorageKey) || '[]');
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePersonalMemos() {
+  localStorage.setItem(personalMemoStorageKey, JSON.stringify(personalMemos));
 }
 
 function startOfDay(date) {
@@ -1149,35 +1175,119 @@ function renderMapOverview() {
   if (primaryView === 'map') void initializeOverviewMap(places);
 }
 
-function setPrimaryView(view, updateHistory = false) {
-  if (updateHistory && view === 'map' && agendaPanel.classList.contains('is-open')) {
-    closeAgendaSheet(true);
-    history.replaceState({ ...(history.state || {}), [appHistoryLayerKey]: 'map' }, '');
-  } else if (updateHistory && view === 'map' && currentAppHistoryLayer() !== 'map') {
-    pushAppHistoryLayer('map');
+function formatMemoTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function renderMemoView() {
+  const activeCalendar = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId);
+  const memos = calendarScope === 'shared' ? sharedMemos : personalMemos;
+  memoCount.textContent = `${memos.length}개`;
+  memoViewDescription.textContent = calendarScope === 'shared' && activeCalendar
+    ? `${activeCalendar.name}에서 함께 확인하는 메모예요.`
+    : '이 기기에서만 확인하는 간단한 메모예요.';
+  quickMemoInput.disabled = calendarScope === 'shared' && !memoTablesReady;
+  quickMemoForm.querySelector('button[type="submit"]').disabled = quickMemoInput.disabled;
+  memoList.replaceChildren();
+  if (calendarScope === 'shared' && !memoTablesReady) {
+    const notice = document.createElement('p');
+    notice.className = 'memo-empty';
+    notice.textContent = '공유 메모 저장 공간을 준비하고 있어요. 잠시 후 다시 열어 주세요.';
+    memoList.append(notice);
+    return;
   }
-  if (updateHistory && view === 'calendar' && currentAppHistoryLayer() === 'map') {
+  if (!memos.length) {
+    const empty = document.createElement('p');
+    empty.className = 'memo-empty';
+    empty.textContent = '아직 메모가 없어요. 함께 기억할 내용을 간단히 남겨보세요.';
+    memoList.append(empty);
+    return;
+  }
+  [...memos]
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .forEach((memo) => {
+      const card = document.createElement('article');
+      card.className = 'memo-card';
+      const content = document.createElement('p');
+      content.textContent = memo.content;
+      const footer = document.createElement('div');
+      footer.className = 'memo-card-footer';
+      const meta = document.createElement('span');
+      meta.className = 'memo-card-meta';
+      meta.textContent = [memo.authorLabel || '나', formatMemoTime(memo.createdAt)].filter(Boolean).join(' · ');
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'memo-delete-button';
+      remove.textContent = '삭제';
+      remove.setAttribute('aria-label', `${memo.content.slice(0, 20)} 메모 삭제`);
+      remove.addEventListener('click', async () => {
+        if (!window.confirm('이 메모를 삭제할까요?')) return;
+        remove.disabled = true;
+        try {
+          if (calendarScope === 'shared') await window.sharedCalendar.deleteMemo(memo.id);
+          else {
+            personalMemos = personalMemos.filter((item) => item.id !== memo.id);
+            savePersonalMemos();
+            renderMemoView();
+          }
+        } catch (error) {
+          console.error(error);
+          showCalendarToast('메모를 삭제하지 못했어요.', true);
+          remove.disabled = false;
+        }
+      });
+      footer.append(meta, remove);
+      card.append(content, footer);
+      memoList.append(card);
+    });
+}
+
+function setPrimaryView(view, updateHistory = false) {
+  const nextView = ['map', 'memo'].includes(view) ? view : 'calendar';
+  if (updateHistory && nextView !== 'calendar' && agendaPanel.classList.contains('is-open')) {
+    closeAgendaSheet(true);
+    history.replaceState({ ...(history.state || {}), [appHistoryLayerKey]: nextView }, '');
+  } else if (updateHistory && nextView !== 'calendar' && currentAppHistoryLayer() === 'root') {
+    pushAppHistoryLayer(nextView);
+  } else if (updateHistory && nextView !== 'calendar' && currentAppHistoryLayer() !== nextView) {
+    history.replaceState({ ...(history.state || {}), [appHistoryLayerKey]: nextView }, '');
+  }
+  if (updateHistory && nextView === 'calendar' && ['map', 'memo'].includes(currentAppHistoryLayer())) {
     history.back();
     return;
   }
-  primaryView = view === 'map' ? 'map' : 'calendar';
+  primaryView = nextView;
   localStorage.setItem(primaryViewStorageKey, primaryView);
   const showingMap = primaryView === 'map';
+  const showingMemo = primaryView === 'memo';
+  const showingCalendar = primaryView === 'calendar';
   if (!showingMap && overviewMapFrame.classList.contains('is-expanded')) setOverviewMapExpanded(false);
-  if (showingMap && agendaPanel.classList.contains('is-open')) closeAgendaSheet();
-  calendarPanel.hidden = showingMap;
+  if (!showingCalendar && agendaPanel.classList.contains('is-open')) closeAgendaSheet();
+  calendarPanel.hidden = !showingCalendar;
   mapView.hidden = !showingMap;
-  calendarTabButton.classList.toggle('is-active', !showingMap);
-  calendarTabButton.setAttribute('aria-pressed', String(!showingMap));
+  memoView.hidden = !showingMemo;
+  calendarTabButton.classList.toggle('is-active', showingCalendar);
+  calendarTabButton.setAttribute('aria-pressed', String(showingCalendar));
   mapTabButton.classList.toggle('is-active', showingMap);
   mapTabButton.setAttribute('aria-pressed', String(showingMap));
+  memoTabButton.classList.toggle('is-active', showingMemo);
+  memoTabButton.setAttribute('aria-pressed', String(showingMemo));
   if (showingMap) renderMapOverview();
+  if (showingMemo) renderMemoView();
 }
 
 function render() {
   renderCalendar();
   renderAgenda();
   renderMapOverview();
+  renderMemoView();
 }
 
 function openAgendaSheet(fromHistory = false) {
@@ -1745,6 +1855,44 @@ document.querySelector('#previousMonth').addEventListener('click', () => changeM
 document.querySelector('#nextMonth').addEventListener('click', () => changeMonth(1));
 calendarTabButton.addEventListener('click', () => setPrimaryView('calendar', true));
 mapTabButton.addEventListener('click', () => setPrimaryView('map', true));
+memoTabButton.addEventListener('click', () => setPrimaryView('memo', true));
+quickMemoInput.addEventListener('input', () => {
+  quickMemoLength.textContent = String(quickMemoInput.value.length);
+});
+quickMemoForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const content = quickMemoInput.value.trim();
+  if (!content) {
+    memoFormError.textContent = '메모 내용을 입력해 주세요.';
+    memoFormError.hidden = false;
+    quickMemoInput.focus();
+    return;
+  }
+  const saveButton = quickMemoForm.querySelector('button[type="submit"]');
+  memoFormError.hidden = true;
+  saveButton.disabled = true;
+  try {
+    if (calendarScope === 'shared') await window.sharedCalendar.addMemo(content);
+    else {
+      personalMemos.unshift({
+        id: `memo-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        content,
+        createdAt: new Date().toISOString(),
+        authorLabel: '나',
+      });
+      savePersonalMemos();
+      renderMemoView();
+    }
+    quickMemoForm.reset();
+    quickMemoLength.textContent = '0';
+  } catch (error) {
+    console.error(error);
+    memoFormError.textContent = '메모를 저장하지 못했어요. 인터넷 연결을 확인해 주세요.';
+    memoFormError.hidden = false;
+  } finally {
+    saveButton.disabled = calendarScope === 'shared' && !memoTablesReady;
+  }
+});
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
 addEventButton.addEventListener('click', () => openComposer());
 meetingDayToggle.addEventListener('click', toggleMeetingDay);
@@ -2261,7 +2409,8 @@ window.addEventListener('popstate', (event) => {
   if (composer.classList.contains('is-open') && layer !== 'composer') closeComposer(true);
   if (agendaPanel.classList.contains('is-open') && !['agenda', 'composer', 'place', 'place-map'].includes(layer)) closeAgendaSheet(true);
   if (layer === 'map') setPrimaryView('map');
-  else if (primaryView === 'map' && layer !== 'overview-map') setPrimaryView('calendar');
+  else if (layer === 'memo') setPrimaryView('memo');
+  else if (primaryView !== 'calendar' && layer !== 'overview-map') setPrimaryView('calendar');
 });
 
 applyTheme(document.documentElement.dataset.theme || 'light');
@@ -2280,6 +2429,11 @@ Promise.resolve(window.sharedCalendar?.init({
     sharedMeetingDays = nextMeetingDays;
     meetingTablesReady = tablesReady;
     if (calendarScope === 'shared') render();
+  },
+  onNotes(nextNotes, tablesReady) {
+    sharedMemos = nextNotes;
+    memoTablesReady = tablesReady;
+    if (calendarScope === 'shared') renderMemoView();
   },
   onConnection(connected) {
     if (!connected && calendarScope === 'shared') setCalendarScope('personal');

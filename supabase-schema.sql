@@ -56,11 +56,20 @@ create table public.meeting_places (
   foreign key (meeting_day_id, couple_id) references public.meeting_days(id, couple_id) on delete cascade
 );
 
+create table public.couple_notes (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references public.couples(id) on delete cascade,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  content text not null check (char_length(trim(content)) between 1 and 500),
+  created_at timestamptz not null default now()
+);
+
 alter table public.couples enable row level security;
 alter table public.couple_members enable row level security;
 alter table public.events enable row level security;
 alter table public.meeting_days enable row level security;
 alter table public.meeting_places enable row level security;
+alter table public.couple_notes enable row level security;
 
 create function public.is_couple_member(target_couple uuid)
 returns boolean language sql stable security definer set search_path = public
@@ -80,9 +89,13 @@ create policy "members view meeting places" on public.meeting_places for select 
 create policy "members add meeting places" on public.meeting_places for insert with check (public.is_couple_member(couple_id) and created_by = auth.uid());
 create policy "members update meeting places" on public.meeting_places for update using (public.is_couple_member(couple_id)) with check (public.is_couple_member(couple_id));
 create policy "members delete meeting places" on public.meeting_places for delete using (public.is_couple_member(couple_id));
+create policy "members view couple notes" on public.couple_notes for select using (public.is_couple_member(couple_id));
+create policy "members add couple notes" on public.couple_notes for insert with check (public.is_couple_member(couple_id) and created_by = auth.uid());
+create policy "members delete couple notes" on public.couple_notes for delete using (public.is_couple_member(couple_id));
 
 grant select, insert, update, delete on public.meeting_days to authenticated;
 grant select, insert, update, delete on public.meeting_places to authenticated;
+grant select, insert, delete on public.couple_notes to authenticated;
 
 create function public.create_couple(couple_name text)
 returns uuid language plpgsql security definer set search_path = public
@@ -188,3 +201,4 @@ alter publication supabase_realtime add table public.couples;
 alter publication supabase_realtime add table public.couple_members;
 alter publication supabase_realtime add table public.meeting_days;
 alter publication supabase_realtime add table public.meeting_places;
+alter publication supabase_realtime add table public.couple_notes;
