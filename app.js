@@ -488,26 +488,29 @@ function renderAnniversarySheet() {
       date: nextBirthday,
     });
   });
-  upcomingSpecialDays.sort((a, b) => a.date - b.date || a.label.localeCompare(b.label, 'ko')).forEach((milestone) => {
-    const item = document.createElement('article');
-    item.className = `milestone-item ${milestone.type === 'year' ? 'is-year' : ''} ${milestone.kind === 'birthday' ? 'is-birthday' : ''}`;
-    const icon = document.createElement('span');
-    icon.className = 'milestone-icon';
-    icon.textContent = milestone.kind === 'birthday' ? '🎂' : milestone.type === 'year' ? '♥' : '✦';
-    const copy = document.createElement('div');
-    copy.className = 'milestone-copy';
-    const title = document.createElement('strong');
-    title.textContent = milestone.label;
-    const remaining = document.createElement('span');
-    remaining.textContent = remainingDayLabel(milestone.date);
-    copy.append(title, remaining);
-    const date = document.createElement('time');
-    date.className = 'milestone-date';
-    date.dateTime = toKey(milestone.date);
-    date.textContent = formatFullDate(milestone.date);
-    item.append(icon, copy, date);
-    milestoneList.append(item);
-  });
+  upcomingSpecialDays
+    .sort((a, b) => a.date - b.date || a.label.localeCompare(b.label, 'ko'))
+    .slice(0, 5)
+    .forEach((milestone) => {
+      const item = document.createElement('article');
+      item.className = `milestone-item ${milestone.type === 'year' ? 'is-year' : ''} ${milestone.kind === 'birthday' ? 'is-birthday' : ''}`;
+      const icon = document.createElement('span');
+      icon.className = 'milestone-icon';
+      icon.textContent = milestone.kind === 'birthday' ? '🎂' : milestone.type === 'year' ? '♥' : '✦';
+      const copy = document.createElement('div');
+      copy.className = 'milestone-copy';
+      const title = document.createElement('strong');
+      title.textContent = milestone.label;
+      const remaining = document.createElement('span');
+      remaining.textContent = remainingDayLabel(milestone.date);
+      copy.append(title, remaining);
+      const date = document.createElement('time');
+      date.className = 'milestone-date';
+      date.dateTime = toKey(milestone.date);
+      date.textContent = formatFullDate(milestone.date);
+      item.append(icon, copy, date);
+      milestoneList.append(item);
+    });
   const me = (calendar.members || []).find((member) => member.isMe);
   birthdayInput.value = me?.birthday || '';
   birthdayInput.max = toKey(today);

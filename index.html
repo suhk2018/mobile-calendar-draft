@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=50" />
-    <link rel="icon" href="icon.svg?v=50" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=50" />
-    <link rel="stylesheet" href="styles.css?v=50" />
+    <link rel="manifest" href="manifest.webmanifest?v=51" />
+    <link rel="icon" href="icon.svg?v=51" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=51" />
+    <link rel="stylesheet" href="styles.css?v=51" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -29,7 +29,6 @@
     <main class="app-shell">
       <header class="topbar">
         <div class="brand-group">
-          <button class="menu-button" id="menuButton" type="button" aria-label="캘린더 메뉴 열기">☰</button>
           <div>
             <p class="eyebrow" id="calendarEyebrow">MY CALENDAR</p>
             <h1 id="currentCalendarTitle" aria-live="polite">나의 일정</h1>
@@ -281,6 +280,10 @@
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>
         <span>메모</span>
       </button>
+      <button class="bottom-navigation-button" id="menuButton" type="button" aria-label="캘린더 목록 열기" aria-expanded="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+        <span>목록</span>
+      </button>
     </nav>
 
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
@@ -377,9 +380,9 @@
       </button>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=50"></script>
-    <script src="map-config.js?v=50"></script>
-    <script src="shared-calendar.js?v=50"></script>
-    <script src="app.js?v=50"></script>
+    <script src="supabase-config.js?v=51"></script>
+    <script src="map-config.js?v=51"></script>
+    <script src="shared-calendar.js?v=51"></script>
+    <script src="app.js?v=51"></script>
   </body>
 </html>
