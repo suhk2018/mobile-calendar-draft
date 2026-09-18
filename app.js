@@ -87,6 +87,12 @@ const mapView = document.querySelector('#mapView');
 const mapTabButton = document.querySelector('#mapTabButton');
 const calendarTabButton = document.querySelector('#calendarTabButton');
 const mapOverview = document.querySelector('#mapOverview');
+const overviewMapFrame = document.querySelector('#overviewMapFrame');
+const expandOverviewMapButton = document.querySelector('#expandOverviewMap');
+const overviewMapGuide = overviewMapFrame.querySelector('.place-map-guide');
+const overviewMapQuery = document.querySelector('#overviewMapQuery');
+const searchOverviewMapButton = document.querySelector('#searchOverviewMap');
+const overviewSearchResults = document.querySelector('#overviewSearchResults');
 const mapOverviewNotice = document.querySelector('#mapOverviewNotice');
 const mapPlaceSummary = document.querySelector('#mapPlaceSummary');
 const mapPlaceCount = document.querySelector('#mapPlaceCount');
@@ -122,10 +128,13 @@ let editingEvent = null;
 let editingMeetingPlace = null;
 let placeMapInstance = null;
 let placeMapMarker = null;
+let placeMapInfoWindow = null;
 let naverMapLoader = null;
 let primaryView = localStorage.getItem(primaryViewStorageKey) === 'map' ? 'map' : 'calendar';
 let overviewMapInstance = null;
 let overviewMapMarkers = new Map();
+let overviewMapInfoWindow = null;
+let overviewSearchMarker = null;
 let overviewMapRenderToken = 0;
 const holidaysByYear = new Map();
 const maxCalendarEventLanes = 5;
@@ -825,13 +834,36 @@ function placeHasCoordinates(place) {
 }
 
 function showOverviewMapPlaceholder(message) {
+  setOverviewMapExpanded(false);
   overviewMapInstance = null;
   overviewMapMarkers = new Map();
+  overviewMapInfoWindow = null;
+  overviewSearchMarker = null;
+  expandOverviewMapButton.hidden = true;
   mapOverview.replaceChildren();
   const placeholder = document.createElement('p');
   placeholder.className = 'map-overview-placeholder';
   placeholder.textContent = message;
   mapOverview.append(placeholder);
+}
+
+function createMapInfoCard(title, detail, meta = '') {
+  const card = document.createElement('div');
+  card.className = 'map-info-card';
+  const name = document.createElement('strong');
+  name.textContent = title;
+  card.append(name);
+  if (detail) {
+    const address = document.createElement('span');
+    address.textContent = detail;
+    card.append(address);
+  }
+  if (meta) {
+    const small = document.createElement('small');
+    small.textContent = meta;
+    card.append(small);
+  }
+  return card;
 }
 
 function showOverviewMapNotice(title, description) {
@@ -853,6 +885,10 @@ function focusOverviewPlace(place) {
   overviewMapInstance.panTo(position);
   overviewMapInstance.setZoom(16);
   mapPlaceSummary.querySelectorAll('.map-place-card').forEach((card) => card.classList.toggle('is-selected', card.dataset.placeKey === place.mapKey));
+  if (overviewMapInfoWindow) {
+    overviewMapInfoWindow.setContent(createMapInfoCard(place.name, place.address || place.memo || '', `${formatShortDate(fromKey(place.meetingDate))} 방문`));
+    overviewMapInfoWindow.open(overviewMapInstance, overviewMapMarkers.get(place.mapKey) || position);
+  }
 }
 
 function renderOverviewPlaceList(places) {
@@ -905,6 +941,11 @@ function renderOverviewPlaceList(places) {
 async function initializeOverviewMap(places) {
   const renderToken = ++overviewMapRenderToken;
   mapOverviewNotice.hidden = true;
+  expandOverviewMapButton.hidden = true;
+  overviewSearchResults.replaceChildren();
+  overviewSearchResults.hidden = true;
+  overviewMapInfoWindow = null;
+  overviewSearchMarker = null;
   if (calendarScope !== 'shared') {
     showOverviewMapPlaceholder('공유 캘린더를 먼저 선택해 주세요');
     return;
@@ -929,7 +970,21 @@ async function initializeOverviewMap(places) {
     zoom: mappedPlaces.length === 1 ? 16 : 11,
     zoomControl: false,
   });
+  expandOverviewMapButton.hidden = false;
+  overviewMapInfoWindow = new window.naver.maps.InfoWindow({
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    anchorSize: new window.naver.maps.Size(0, 0),
+    pixelOffset: new window.naver.maps.Point(0, -12),
+  });
+  overviewSearchMarker = null;
   overviewMapMarkers = new Map();
+  window.naver.maps.Event.addListener(overviewMapInstance, 'click', (event) => {
+    overviewSearchResults.hidden = true;
+    const latitude = typeof event.coord.lat === 'function' ? event.coord.lat() : event.coord.y;
+    const longitude = typeof event.coord.lng === 'function' ? event.coord.lng() : event.coord.x;
+    showOverviewCoordinateInfo(latitude, longitude);
+  });
   if (!mappedPlaces.length) {
     showOverviewMapNotice('지도에 표시할 위치가 없어요', '기존 장소를 수정해 지도에서 위치를 고르면 여기에 마커가 생겨요.');
     return;
@@ -953,6 +1008,111 @@ async function initializeOverviewMap(places) {
   }
 }
 
+function showOverviewCoordinateInfo(latitude, longitude) {
+  if (!window.naver?.maps?.Service || !overviewMapInstance) return;
+  const position = new window.naver.maps.LatLng(latitude, longitude);
+  if (!overviewSearchMarker) overviewSearchMarker = new window.naver.maps.Marker({ map: overviewMapInstance, position });
+  else overviewSearchMarker.setPosition(position);
+  window.naver.maps.Service.reverseGeocode({ coords: position }, (status, response) => {
+    const address = status === window.naver.maps.Service.Status.OK ? response?.v2?.address : null;
+    const addressText = address?.roadAddress || address?.jibunAddress || '선택한 지도 위치';
+    overviewMapInfoWindow?.setContent(createMapInfoCard('이 위치의 주소', addressText));
+    overviewMapInfoWindow?.open(overviewMapInstance, overviewSearchMarker);
+  });
+}
+
+function showOverviewSearchMessage(message) {
+  overviewSearchResults.replaceChildren();
+  const empty = document.createElement('p');
+  empty.className = 'place-search-empty';
+  empty.textContent = message;
+  overviewSearchResults.append(empty);
+  overviewSearchResults.hidden = false;
+}
+
+function renderOverviewSearchResults(addresses) {
+  overviewSearchResults.replaceChildren();
+  if (!addresses.length) {
+    showOverviewSearchMessage('검색 결과가 없어요. 도로명이나 지번 주소를 더 자세히 입력해 보세요.');
+    return;
+  }
+  addresses.forEach((address) => {
+    const latitude = Number(address.y);
+    const longitude = Number(address.x);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+    const roadAddress = address.roadAddress || '';
+    const jibunAddress = address.jibunAddress || '';
+    const selectedAddress = roadAddress || jibunAddress;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'place-search-result';
+    const title = document.createElement('strong');
+    title.textContent = selectedAddress;
+    button.append(title);
+    if (roadAddress && jibunAddress && roadAddress !== jibunAddress) {
+      const detail = document.createElement('span');
+      detail.textContent = jibunAddress;
+      button.append(detail);
+    }
+    button.addEventListener('click', () => {
+      const position = new window.naver.maps.LatLng(latitude, longitude);
+      overviewMapInstance.panTo(position);
+      overviewMapInstance.setZoom(16);
+      if (!overviewSearchMarker) overviewSearchMarker = new window.naver.maps.Marker({ map: overviewMapInstance, position });
+      else overviewSearchMarker.setPosition(position);
+      overviewMapInfoWindow?.setContent(createMapInfoCard('검색한 위치', selectedAddress));
+      overviewMapInfoWindow?.open(overviewMapInstance, overviewSearchMarker);
+      overviewMapQuery.value = selectedAddress;
+      overviewSearchResults.hidden = true;
+    });
+    overviewSearchResults.append(button);
+  });
+  if (!overviewSearchResults.childElementCount) {
+    showOverviewSearchMessage('선택할 수 있는 주소가 없어요.');
+    return;
+  }
+  overviewSearchResults.hidden = false;
+}
+
+function searchOverviewAddress() {
+  const query = overviewMapQuery.value.trim();
+  if (!query) {
+    showOverviewSearchMessage('검색할 도로명이나 지번 주소를 입력해 주세요.');
+    overviewMapQuery.focus();
+    return;
+  }
+  if (!overviewMapInstance || !window.naver?.maps?.Service) {
+    showOverviewSearchMessage('공유 캘린더의 지도를 먼저 불러와 주세요.');
+    return;
+  }
+  searchOverviewMapButton.disabled = true;
+  searchOverviewMapButton.textContent = '검색 중';
+  window.naver.maps.Service.geocode({ query }, (status, response) => {
+    searchOverviewMapButton.disabled = false;
+    searchOverviewMapButton.textContent = '검색';
+    if (status !== window.naver.maps.Service.Status.OK) {
+      showOverviewSearchMessage('주소를 검색하지 못했어요. 잠시 후 다시 시도해 주세요.');
+      return;
+    }
+    renderOverviewSearchResults(response?.v2?.addresses || []);
+  });
+}
+
+function setOverviewMapExpanded(expanded) {
+  if (expanded && !overviewMapInstance) return;
+  overviewMapFrame.classList.toggle('is-expanded', expanded);
+  document.body.classList.toggle('is-overview-map-expanded', expanded);
+  expandOverviewMapButton.setAttribute('aria-expanded', String(expanded));
+  expandOverviewMapButton.querySelector('span').textContent = expanded ? '지도 닫기' : '크게 보기';
+  overviewMapGuide.hidden = !expanded;
+  if (!overviewMapInstance || !window.naver?.maps) return;
+  const center = overviewMapInstance.getCenter();
+  requestAnimationFrame(() => {
+    overviewMapInstance.setSize(new window.naver.maps.Size(mapOverview.clientWidth, mapOverview.clientHeight));
+    overviewMapInstance.setCenter(center);
+  });
+}
+
 function renderMapOverview() {
   const places = meetingPlacesForMap();
   const activeCalendar = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId);
@@ -968,6 +1128,7 @@ function setPrimaryView(view) {
   primaryView = view === 'map' ? 'map' : 'calendar';
   localStorage.setItem(primaryViewStorageKey, primaryView);
   const showingMap = primaryView === 'map';
+  if (!showingMap && overviewMapFrame.classList.contains('is-expanded')) setOverviewMapExpanded(false);
   if (showingMap && agendaPanel.classList.contains('is-open')) closeAgendaSheet();
   calendarPanel.hidden = showingMap;
   mapView.hidden = !showingMap;
@@ -1224,8 +1385,18 @@ function reverseGeocodePlace(latitude, longitude) {
   window.naver.maps.Service.reverseGeocode({ coords }, (status, response) => {
     if (status !== window.naver.maps.Service.Status.OK || !response?.v2?.address) return;
     const address = response.v2.address.roadAddress || response.v2.address.jibunAddress || '';
-    if (address) placeAddress.value = address;
+    if (address) {
+      placeAddress.value = address;
+      placeMapQuery.value = address;
+      showPlaceMapInfo(placeName.value.trim() || '선택한 위치', address);
+    }
   });
+}
+
+function showPlaceMapInfo(title, detail) {
+  if (!placeMapInfoWindow || !placeMapInstance || !placeMapMarker) return;
+  placeMapInfoWindow.setContent(createMapInfoCard(title, detail));
+  placeMapInfoWindow.open(placeMapInstance, placeMapMarker);
 }
 
 function showPlaceSearchMessage(message) {
@@ -1265,6 +1436,7 @@ function renderPlaceSearchResults(addresses) {
       placeAddress.value = selectedAddress;
       placeMapQuery.value = selectedAddress;
       setPlacePosition(latitude, longitude);
+      showPlaceMapInfo(placeName.value.trim() || '검색한 위치', selectedAddress);
       placeSearchResults.hidden = true;
     });
     placeSearchResults.append(button);
@@ -1338,8 +1510,17 @@ async function initializePlaceMap() {
     zoom: coordinates ? 16 : 12,
     zoomControl: false,
   });
+  placeMapInfoWindow = new window.naver.maps.InfoWindow({
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    anchorSize: new window.naver.maps.Size(0, 0),
+    pixelOffset: new window.naver.maps.Point(0, -12),
+  });
   placeMapMarker = null;
-  if (coordinates) setPlacePosition(coordinates.latitude, coordinates.longitude);
+  if (coordinates) {
+    setPlacePosition(coordinates.latitude, coordinates.longitude);
+    showPlaceMapInfo(placeName.value.trim() || '저장된 위치', placeAddress.value.trim());
+  }
   window.naver.maps.Event.addListener(placeMapInstance, 'click', (event) => {
     const latitude = typeof event.coord.lat === 'function' ? event.coord.lat() : event.coord.y;
     const longitude = typeof event.coord.lng === 'function' ? event.coord.lng() : event.coord.x;
@@ -1403,6 +1584,7 @@ function closePlaceSheet() {
   editingMeetingPlace = null;
   placeMapInstance = null;
   placeMapMarker = null;
+  placeMapInfoWindow = null;
   setTimeout(() => {
     if (!placeSheet.classList.contains('is-open')) {
       placeBackdrop.hidden = true;
@@ -1472,6 +1654,13 @@ placeMapQuery.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter') return;
   event.preventDefault();
   searchPlaceAddress();
+});
+expandOverviewMapButton.addEventListener('click', () => setOverviewMapExpanded(!overviewMapFrame.classList.contains('is-expanded')));
+searchOverviewMapButton.addEventListener('click', searchOverviewAddress);
+overviewMapQuery.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  searchOverviewAddress();
 });
 useCurrentLocationButton.addEventListener('click', () => {
   if (!navigator.geolocation) {
@@ -1961,6 +2150,7 @@ eventForm.addEventListener('submit', async (event) => {
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
+  if (overviewMapFrame.classList.contains('is-expanded')) return setOverviewMapExpanded(false);
   if (placeMapFrame.classList.contains('is-expanded')) return setPlaceMapExpanded(false);
   if (placeSheet.classList.contains('is-open')) return closePlaceSheet();
   if (composer.classList.contains('is-open')) return closeComposer();

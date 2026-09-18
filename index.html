@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=43" />
-    <link rel="icon" href="icon.svg?v=43" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=43" />
-    <link rel="stylesheet" href="styles.css?v=43" />
+    <link rel="manifest" href="manifest.webmanifest?v=44" />
+    <link rel="icon" href="icon.svg?v=44" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=44" />
+    <link rel="stylesheet" href="styles.css?v=44" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -67,7 +67,16 @@
           <span class="map-place-count" id="mapPlaceCount">0곳</span>
         </div>
         <p class="map-view-description" id="mapViewDescription">만난 날에 기록한 장소를 한눈에 볼 수 있어요.</p>
-        <div class="map-overview" id="mapOverview" aria-label="방문 장소 지도"></div>
+        <div class="overview-map-frame" id="overviewMapFrame">
+          <div class="place-map-search" role="search">
+            <input id="overviewMapQuery" type="search" autocomplete="off" placeholder="도로명·지번 주소 검색" aria-label="방문 지도 주소 검색" />
+            <button id="searchOverviewMap" type="button">검색</button>
+          </div>
+          <div class="place-search-results" id="overviewSearchResults" aria-live="polite" hidden></div>
+          <div class="map-overview" id="mapOverview" aria-label="방문 장소 지도"></div>
+          <button class="place-map-expand" id="expandOverviewMap" type="button" aria-expanded="false" hidden>⛶ <span>크게 보기</span></button>
+          <p class="place-map-guide" hidden>저장한 마커를 누르면 장소 정보가 보여요</p>
+        </div>
         <div class="map-overview-notice" id="mapOverviewNotice" hidden></div>
         <div class="map-place-summary" id="mapPlaceSummary" aria-live="polite"></div>
       </section>
@@ -348,9 +357,9 @@
       </button>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=43"></script>
-    <script src="map-config.js?v=43"></script>
-    <script src="shared-calendar.js?v=43"></script>
-    <script src="app.js?v=43"></script>
+    <script src="supabase-config.js?v=44"></script>
+    <script src="map-config.js?v=44"></script>
+    <script src="shared-calendar.js?v=44"></script>
+    <script src="app.js?v=44"></script>
   </body>
 </html>
