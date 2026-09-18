@@ -623,14 +623,20 @@ legend { margin-bottom: 8px; }
   .calendar-event-bar.is-timed::before { width: 5px; height: 5px; margin: 3px 0 0 -7px; }
   .calendar-event-bar.is-timed.has-author { padding-left: 2px; }
   .calendar-event-author { width: 10px; height: 10px; margin-right: 2px; font-size: .4rem; }
-  .app-shell.is-agenda-open .calendar-panel { min-height: auto; padding-bottom: 8px; flex: 0 0 auto; transition: padding 200ms ease; }
+  .app-shell.is-agenda-open .calendar-panel { min-height: auto; padding: 9px 7px 6px; flex: 0 0 auto; transition: padding 200ms ease; }
+  .app-shell.is-agenda-open .month-controls { padding-bottom: 3px; }
+  .app-shell.is-agenda-open .month-controls h2 { font-size: 1rem; }
+  .app-shell.is-agenda-open .nav-button { height: 34px; font-size: 1.55rem; }
   .app-shell.is-agenda-open .calendar-viewport { flex: 0 0 auto; }
-  .app-shell.is-agenda-open .calendar-grid { grid-template-rows: repeat(var(--calendar-weeks, 6), clamp(54px, 7.3dvh, 64px)); flex: 0 0 auto; }
-  .app-shell.is-agenda-open .day-cell { min-height: clamp(54px, 7.3dvh, 64px); padding-top: 3px; transition: min-height 200ms ease, background 160ms ease; }
+  .app-shell.is-agenda-open .weekdays { margin-bottom: 2px; }
+  .app-shell.is-agenda-open .weekdays span { padding-block: 2px; }
+  .app-shell.is-agenda-open .calendar-grid { grid-template-rows: repeat(var(--calendar-weeks, 6), clamp(48px, 6.2dvh, 52px)); flex: 0 0 auto; }
+  .app-shell.is-agenda-open .day-cell { min-height: clamp(48px, 6.2dvh, 52px); padding-top: 1px; transition: min-height 200ms ease, background 160ms ease; }
+  .app-shell.is-agenda-open .day-number { width: 25px; height: 25px; font-size: .76rem; }
   .app-shell.is-agenda-open .first-met-label { display: none; }
   .app-shell.is-agenda-open .calendar-event-bar,
   .app-shell.is-agenda-open .calendar-event-bar.is-timed,
-  .app-shell.is-agenda-open .calendar-event-bar.first-met-week { height: 6px; margin-top: calc(34px + var(--event-lane-offset, 0px)); padding: 0 2px; align-items: center; border-radius: 4px; color: transparent; font-size: 0; line-height: 0; }
+  .app-shell.is-agenda-open .calendar-event-bar.first-met-week { height: 6px; margin-top: calc(28px + var(--event-lane-offset, 0px)); padding: 0 2px; align-items: center; border-radius: 4px; color: transparent; font-size: 0; line-height: 0; }
   .app-shell.is-agenda-open .calendar-event-bar.is-timed::before,
   .app-shell.is-agenda-open .calendar-event-bar > * { display: none; }
   .agenda-backdrop { display: none; }

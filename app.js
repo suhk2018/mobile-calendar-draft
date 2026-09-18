@@ -135,7 +135,6 @@ let overviewMapMarkers = new Map();
 let overviewMapInfoWindow = null;
 let overviewSearchMarker = null;
 let overviewMapRenderToken = 0;
-let agendaPullStart = null;
 const holidaysByYear = new Map();
 const maxCalendarEventLanes = 5;
 
@@ -1871,22 +1870,6 @@ togetherCounter.addEventListener('click', openAnniversarySheet);
 closeAnniversaryButton.addEventListener('click', closeAnniversarySheet);
 anniversaryBackdrop.addEventListener('click', closeAnniversarySheet);
 
-agendaPanel.addEventListener('touchstart', (event) => {
-  if (!calendarIsCompact() || event.touches.length !== 1) return;
-  const touch = event.touches[0];
-  agendaPullStart = { x: touch.clientX, y: touch.clientY };
-}, { passive: true });
-
-agendaPanel.addEventListener('touchend', (event) => {
-  if (!agendaPullStart || event.changedTouches.length !== 1) return;
-  const touch = event.changedTouches[0];
-  const deltaX = touch.clientX - agendaPullStart.x;
-  const deltaY = touch.clientY - agendaPullStart.y;
-  agendaPullStart = null;
-  if (deltaY > 48 && Math.abs(deltaY) > Math.abs(deltaX) * 1.15) closeAgendaSheet();
-}, { passive: true });
-
-agendaPanel.addEventListener('touchcancel', () => { agendaPullStart = null; }, { passive: true });
 birthdayForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!birthdayInput.value) return;
@@ -2079,11 +2062,6 @@ function endCalendarGesture(x, y) {
     setTimeout(() => selectDate(tappedDate), 80);
     return;
   }
-  if (calendarIsCompact() && deltaY > 36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
-    ignoreClickUntil = Date.now() + 350;
-    closeAgendaSheet();
-    return;
-  }
   if (deltaY < -36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
     ignoreClickUntil = Date.now() + 350;
     openAgendaSheet();
@@ -2149,11 +2127,6 @@ if (window.PointerEvent) {
     const deltaX = touch.clientX - touchStart.x;
     const deltaY = touch.clientY - touchStart.y;
     touchSwipeStart = null;
-    if (calendarIsCompact() && deltaY > 36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
-      ignoreClickUntil = Date.now() + 350;
-      closeAgendaSheet();
-      return;
-    }
     if (deltaY < -36 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
       ignoreClickUntil = Date.now() + 350;
       if (!agendaPanel.classList.contains('is-open')) openAgendaSheet();
