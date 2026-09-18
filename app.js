@@ -1437,13 +1437,18 @@ function renderSharedCalendarTabs() {
   sharedCalendarButton.querySelector('span:last-child').textContent = sharedCalendars.length ? '공유 캘린더 추가' : '공유 캘린더 연결';
 }
 
-function openSideMenu() {
+function openSideMenu(fromHistory = false) {
+  if (!sideMenu.classList.contains('is-open') && !fromHistory) pushAppHistoryLayer('menu');
   menuBackdrop.hidden = false;
   sideMenu.classList.add('is-open');
   menuButton.setAttribute('aria-expanded', 'true');
 }
 
-function closeSideMenu() {
+function closeSideMenu(fromHistory = false) {
+  if (sideMenu.classList.contains('is-open') && !fromHistory) {
+    requestLayerClose('menu', () => closeSideMenu(true));
+    return;
+  }
   sideMenu.classList.remove('is-open');
   menuButton.setAttribute('aria-expanded', 'false');
   setTimeout(() => { if (!sideMenu.classList.contains('is-open')) menuBackdrop.hidden = true; }, 220);
@@ -2401,6 +2406,7 @@ document.addEventListener('keydown', (event) => {
   if (placeSheet.classList.contains('is-open')) return closePlaceSheet();
   if (composer.classList.contains('is-open')) return closeComposer();
   if (anniversarySheet.classList.contains('is-open')) return closeAnniversarySheet();
+  if (sideMenu.classList.contains('is-open')) return closeSideMenu();
   if (agendaPanel.classList.contains('is-open')) closeAgendaSheet();
 });
 
@@ -2411,6 +2417,8 @@ window.addEventListener('popstate', (event) => {
   if (placeSheet.classList.contains('is-open') && layer !== 'place' && layer !== 'place-map') closePlaceSheet(true);
   if (composer.classList.contains('is-open') && layer !== 'composer') closeComposer(true);
   if (agendaPanel.classList.contains('is-open') && !['agenda', 'composer', 'place', 'place-map'].includes(layer)) closeAgendaSheet(true);
+  if (sideMenu.classList.contains('is-open') && layer !== 'menu') closeSideMenu(true);
+  if (layer === 'menu' && !sideMenu.classList.contains('is-open')) openSideMenu(true);
   if (layer === 'map') setPrimaryView('map');
   else if (layer === 'memo') setPrimaryView('memo');
   else if (primaryView !== 'calendar' && layer !== 'overview-map') setPrimaryView('calendar');
