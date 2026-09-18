@@ -74,6 +74,9 @@ const placeMap = document.querySelector('#placeMap');
 const placeMapFrame = document.querySelector('#placeMapFrame');
 const expandPlaceMapButton = document.querySelector('#expandPlaceMap');
 const placeMapGuide = document.querySelector('.place-map-guide');
+const placeMapQuery = document.querySelector('#placeMapQuery');
+const searchPlaceMapButton = document.querySelector('#searchPlaceMap');
+const placeSearchResults = document.querySelector('#placeSearchResults');
 const placeMapNotice = document.querySelector('#placeMapNotice');
 const placeCoordinateLabel = document.querySelector('#placeCoordinateLabel');
 const useCurrentLocationButton = document.querySelector('#useCurrentLocation');
@@ -1225,6 +1228,78 @@ function reverseGeocodePlace(latitude, longitude) {
   });
 }
 
+function showPlaceSearchMessage(message) {
+  placeSearchResults.replaceChildren();
+  const empty = document.createElement('p');
+  empty.className = 'place-search-empty';
+  empty.textContent = message;
+  placeSearchResults.append(empty);
+  placeSearchResults.hidden = false;
+}
+
+function renderPlaceSearchResults(addresses) {
+  placeSearchResults.replaceChildren();
+  if (!addresses.length) {
+    showPlaceSearchMessage('검색 결과가 없어요. 도로명이나 지번 주소를 더 자세히 입력해 보세요.');
+    return;
+  }
+  addresses.forEach((address) => {
+    const latitude = Number(address.y);
+    const longitude = Number(address.x);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+    const roadAddress = address.roadAddress || '';
+    const jibunAddress = address.jibunAddress || '';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'place-search-result';
+    const title = document.createElement('strong');
+    title.textContent = roadAddress || jibunAddress;
+    button.append(title);
+    if (roadAddress && jibunAddress && roadAddress !== jibunAddress) {
+      const detail = document.createElement('span');
+      detail.textContent = jibunAddress;
+      button.append(detail);
+    }
+    button.addEventListener('click', () => {
+      const selectedAddress = roadAddress || jibunAddress;
+      placeAddress.value = selectedAddress;
+      placeMapQuery.value = selectedAddress;
+      setPlacePosition(latitude, longitude);
+      placeSearchResults.hidden = true;
+    });
+    placeSearchResults.append(button);
+  });
+  if (!placeSearchResults.childElementCount) {
+    showPlaceSearchMessage('선택할 수 있는 주소가 없어요.');
+    return;
+  }
+  placeSearchResults.hidden = false;
+}
+
+function searchPlaceAddress() {
+  const query = placeMapQuery.value.trim();
+  if (!query) {
+    showPlaceSearchMessage('검색할 도로명이나 지번 주소를 입력해 주세요.');
+    placeMapQuery.focus();
+    return;
+  }
+  if (!window.naver?.maps?.Service) {
+    showPlaceSearchMessage('주소 검색을 사용할 수 없어요. Naver Cloud에서 Geocoding API가 활성화되었는지 확인해 주세요.');
+    return;
+  }
+  searchPlaceMapButton.disabled = true;
+  searchPlaceMapButton.textContent = '검색 중';
+  window.naver.maps.Service.geocode({ query }, (status, response) => {
+    searchPlaceMapButton.disabled = false;
+    searchPlaceMapButton.textContent = '검색';
+    if (status !== window.naver.maps.Service.Status.OK) {
+      showPlaceSearchMessage('주소를 검색하지 못했어요. 잠시 후 다시 시도해 주세요.');
+      return;
+    }
+    renderPlaceSearchResults(response?.v2?.addresses || []);
+  });
+}
+
 function setPlacePosition(latitude, longitude, shouldResolveAddress = false) {
   placeLatitude.value = String(latitude);
   placeLongitude.value = String(longitude);
@@ -1268,6 +1343,7 @@ async function initializePlaceMap() {
   window.naver.maps.Event.addListener(placeMapInstance, 'click', (event) => {
     const latitude = typeof event.coord.lat === 'function' ? event.coord.lat() : event.coord.y;
     const longitude = typeof event.coord.lng === 'function' ? event.coord.lng() : event.coord.x;
+    placeSearchResults.hidden = true;
     setPlacePosition(latitude, longitude, true);
   });
 }
@@ -1309,6 +1385,9 @@ function openPlaceSheet(place = null) {
   expandPlaceMapButton.setAttribute('aria-expanded', 'false');
   expandPlaceMapButton.querySelector('span').textContent = '크게 보기';
   placeMapGuide.hidden = true;
+  placeMapQuery.value = place?.address || '';
+  placeSearchResults.replaceChildren();
+  placeSearchResults.hidden = true;
   updatePlaceCoordinateLabel();
   placeBackdrop.hidden = false;
   placeSheet.classList.add('is-open');
@@ -1388,6 +1467,12 @@ composerBackdrop.addEventListener('click', closeComposer);
 closePlaceSheetButton.addEventListener('click', closePlaceSheet);
 placeBackdrop.addEventListener('click', closePlaceSheet);
 expandPlaceMapButton.addEventListener('click', () => setPlaceMapExpanded(!placeMapFrame.classList.contains('is-expanded')));
+searchPlaceMapButton.addEventListener('click', searchPlaceAddress);
+placeMapQuery.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  searchPlaceAddress();
+});
 useCurrentLocationButton.addEventListener('click', () => {
   if (!navigator.geolocation) {
     placeFormError.textContent = '이 기기에서는 현재 위치를 사용할 수 없어요.';

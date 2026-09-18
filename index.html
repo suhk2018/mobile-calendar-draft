@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=42" />
-    <link rel="icon" href="icon.svg?v=42" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=42" />
-    <link rel="stylesheet" href="styles.css?v=42" />
+    <link rel="manifest" href="manifest.webmanifest?v=43" />
+    <link rel="icon" href="icon.svg?v=43" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=43" />
+    <link rel="stylesheet" href="styles.css?v=43" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -185,6 +185,11 @@
             <span id="placeCoordinateLabel">지도에서 위치를 선택할 수 있어요</span>
           </div>
           <div class="place-map-frame" id="placeMapFrame">
+            <div class="place-map-search" id="placeMapSearch" role="search">
+              <input id="placeMapQuery" type="search" autocomplete="off" placeholder="도로명·지번 주소 검색" aria-label="지도 주소 검색" />
+              <button id="searchPlaceMap" type="button">검색</button>
+            </div>
+            <div class="place-search-results" id="placeSearchResults" aria-live="polite" hidden></div>
             <div class="place-map" id="placeMap" aria-label="장소 위치 선택 지도"></div>
             <button class="place-map-expand" id="expandPlaceMap" type="button" aria-expanded="false" hidden>⛶ <span>크게 보기</span></button>
             <p class="place-map-guide" hidden>지도를 누르면 이 위치로 선택돼요</p>
@@ -343,9 +348,9 @@
       </button>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=42"></script>
-    <script src="map-config.js?v=42"></script>
-    <script src="shared-calendar.js?v=42"></script>
-    <script src="app.js?v=42"></script>
+    <script src="supabase-config.js?v=43"></script>
+    <script src="map-config.js?v=43"></script>
+    <script src="shared-calendar.js?v=43"></script>
+    <script src="app.js?v=43"></script>
   </body>
 </html>

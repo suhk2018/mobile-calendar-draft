@@ -382,13 +382,25 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .place-map-tools .secondary-button { min-height: 40px; padding: 0 12px; flex: 0 0 auto; font-size: .72rem; }
 .place-map-tools span { overflow: hidden; color: var(--text-tertiary); font-size: .66rem; text-overflow: ellipsis; white-space: nowrap; }
 .place-map-frame { position: relative; }
+.place-map-search { display: grid; margin-bottom: 8px; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+.place-map-search input { width: 100%; min-width: 0; min-height: 44px; padding: 0 13px; border: 1px solid var(--border); border-radius: 13px; outline-color: var(--primary); background: var(--surface-raised); color: var(--text); font-size: .76rem; }
+.place-map-search button { min-height: 44px; padding: 0 15px; border: 0; border-radius: 13px; background: var(--primary); color: #fff; font-size: .74rem; font-weight: 800; }
+.place-search-results { position: absolute; z-index: 5; top: 52px; right: 0; left: 0; display: grid; max-height: 210px; padding: 6px; overflow-y: auto; border: 1px solid var(--border); border-radius: 14px; background: color-mix(in srgb, var(--surface) 97%, transparent); box-shadow: 0 10px 28px rgba(0,0,0,.18); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.place-search-results[hidden] { display: none; }
+.place-search-result { display: grid; width: 100%; min-height: 52px; padding: 9px 10px; gap: 3px; border: 0; border-radius: 10px; background: transparent; color: var(--text); text-align: left; }
+.place-search-result:hover, .place-search-result:focus-visible { background: var(--hover); outline: none; }
+.place-search-result strong { overflow: hidden; font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
+.place-search-result span { overflow: hidden; color: var(--text-tertiary); font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
+.place-search-empty { margin: 0; padding: 14px 10px; color: var(--text-secondary); font-size: .72rem; line-height: 1.45; text-align: center; }
 .place-map { width: 100%; height: 260px; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: linear-gradient(145deg, var(--hover), var(--surface-raised)); }
 .place-map:not(.is-ready) { display: none; }
-.place-map-expand { position: absolute; z-index: 3; top: 10px; right: 10px; display: flex; min-height: 38px; padding: 0 12px; align-items: center; gap: 6px; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--text); font-size: .7rem; font-weight: 800; box-shadow: 0 5px 18px rgba(0,0,0,.14); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.place-map-expand { position: absolute; z-index: 3; top: 62px; right: 10px; display: flex; min-height: 38px; padding: 0 12px; align-items: center; gap: 6px; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--text); font-size: .7rem; font-weight: 800; box-shadow: 0 5px 18px rgba(0,0,0,.14); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .place-map-expand[hidden] { display: none; }
 .place-map-guide { position: absolute; z-index: 3; right: 50%; bottom: max(22px, calc(12px + env(safe-area-inset-bottom))); width: max-content; max-width: calc(100% - 32px); margin: 0; padding: 9px 13px; border-radius: 999px; background: color-mix(in srgb, var(--text) 84%, transparent); color: var(--surface); font-size: .7rem; font-weight: 700; text-align: center; transform: translateX(50%); pointer-events: none; }
 .place-map-frame.is-expanded { position: fixed; z-index: 45; inset: 0; padding: 0; background: var(--background); }
-.place-map-frame.is-expanded .place-map { width: 100%; height: 100%; border: 0; border-radius: 0; }
+.place-map-frame.is-expanded .place-map { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0; }
+.place-map-frame.is-expanded .place-map-search { position: absolute; z-index: 4; top: max(74px, calc(58px + env(safe-area-inset-top))); right: max(16px, env(safe-area-inset-right)); left: max(16px, env(safe-area-inset-left)); margin: 0; }
+.place-map-frame.is-expanded .place-search-results { position: absolute; top: max(126px, calc(110px + env(safe-area-inset-top))); right: max(16px, env(safe-area-inset-right)); left: max(16px, env(safe-area-inset-left)); }
 .place-map-frame.is-expanded .place-map-expand { top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); min-height: 46px; padding-inline: 16px; border-radius: 15px; font-size: .78rem; }
 .place-map-frame.is-expanded .place-map-guide { display: block; }
 .place-map-notice { margin: -5px 0 0; padding: 11px 12px; border-radius: 13px; background: var(--hover); color: var(--text-secondary); font-size: .7rem; line-height: 1.5; }
