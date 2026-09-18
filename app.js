@@ -1424,7 +1424,7 @@ function updateCalendarHeading() {
   calendarEyebrow.textContent = calendarScope === 'shared' ? 'TOGETHER CALENDAR' : 'MY CALENDAR';
   const dDay = calendarScope === 'shared' ? anniversaryDayLabel(activeCalendar?.first_met_on) : '';
   togetherCounter.hidden = !dDay;
-  togetherDayCount.textContent = dDay ? `${dDay} ♥` : '';
+  togetherDayCount.textContent = dDay ? `${dDay} ♡` : '';
   togetherCounter.setAttribute('aria-label', dDay ? `${dDay}, 다가오는 기념일 보기` : '다가오는 기념일 보기');
   composerScopeLabel.textContent = calendarScope === 'shared' ? (activeName || 'TOGETHER SCHEDULE') : 'MY SCHEDULE';
   fitCalendarTitle();
