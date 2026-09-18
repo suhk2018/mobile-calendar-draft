@@ -9,8 +9,8 @@ function cleanText(value: unknown) {
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  const clientId = Deno.env.get('NAVER_SEARCH_CLIENT_ID');
-  const clientSecret = Deno.env.get('NAVER_SEARCH_CLIENT_SECRET');
+  const clientId = Deno.env.get('NAVER_API_HUB_CLIENT_ID');
+  const clientSecret = Deno.env.get('NAVER_API_HUB_CLIENT_SECRET');
   if (!clientId || !clientSecret) {
     return Response.json({ error: 'NAVER_SEARCH_NOT_CONFIGURED' }, { status: 503, headers: corsHeaders });
   }
@@ -18,14 +18,14 @@ Deno.serve(async (request) => {
   const query = new URL(request.url).searchParams.get('query')?.trim();
   if (!query) return Response.json({ items: [] }, { headers: corsHeaders });
 
-  const endpoint = new URL('https://openapi.naver.com/v1/search/local.json');
+  const endpoint = new URL('https://naverapihub.apigw.ntruss.com/search/v1/local');
   endpoint.searchParams.set('query', query.slice(0, 100));
   endpoint.searchParams.set('display', '5');
   endpoint.searchParams.set('sort', 'random');
   const response = await fetch(endpoint, {
     headers: {
-      'X-Naver-Client-Id': clientId,
-      'X-Naver-Client-Secret': clientSecret,
+      'X-NCP-APIGW-API-KEY-ID': clientId,
+      'X-NCP-APIGW-API-KEY': clientSecret,
     },
   });
   if (!response.ok) {

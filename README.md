@@ -129,12 +129,13 @@ supabase-meeting-places-migration.sql 만난 날과 방문 장소 마이그레�
 
 ### 가게 이름 검색 연결
 
-가게명 검색은 NAVER Developers의 **검색 > 지역 검색** API를 사용하며 지도용 Client ID와는 별도입니다.
+가게명 검색은 NAVER Cloud Platform의 **NAVER API HUB > 검색 > 지역** API를 사용하며 지도용 Client ID와는 별도입니다. 2026년 7월 31일부터 NAVER Developers에서는 검색 API 신규 신청을 받지 않습니다.
 
-1. [NAVER Developers](https://developers.naver.com/apps/#/register)에서 애플리케이션을 만들고 **검색** API를 선택합니다.
-2. Supabase Edge Function Secrets에 `NAVER_SEARCH_CLIENT_ID`, `NAVER_SEARCH_CLIENT_SECRET`을 저장합니다.
-3. `supabase functions deploy naver-place-search --project-ref lkwnftupcknlyxodslyu`로 함수를 배포합니다.
-4. Secret은 `map-config.js`, `supabase-config.js` 또는 GitHub 저장소에 넣지 않습니다.
+1. NAVER Cloud 콘솔에서 **All Services > Application Services > NAVER API HUB > Subscription**으로 이동해 서비스 이용을 신청합니다.
+2. **NAVER API HUB > Application > Application 등록**에서 **검색 > 지역**을 선택해 애플리케이션을 만듭니다.
+3. Supabase Edge Function Secrets에 `NAVER_API_HUB_CLIENT_ID`, `NAVER_API_HUB_CLIENT_SECRET`을 저장합니다.
+4. `supabase functions deploy naver-place-search --project-ref lkwnftupcknlyxodslyu`로 함수를 배포합니다.
+5. Secret은 `map-config.js`, `supabase-config.js` 또는 GitHub 저장소에 넣지 않습니다.
 
 함수가 연결되면 일정의 장소 추가 지도와 하단 방문 지도에서 상호명으로 최대 5개의 업체·기관을 검색할 수 있습니다. 연결 전에는 도로명·지번 주소 검색으로 자동 전환됩니다.
 
