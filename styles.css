@@ -174,7 +174,7 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .map-place-summary { display: grid; gap: 14px; margin-top: 12px; }
 .map-place-date-group { display: grid; gap: 7px; }
 .map-place-date-heading { display: flex; width: 100%; padding: 3px 4px 2px; align-items: center; justify-content: space-between; gap: 10px; border: 0; background: transparent; color: var(--text); text-align: left; }
-.map-place-date-heading span { font-size: .8rem; font-weight: 850; }
+.map-place-date-heading span { font-size: .8rem; font-weight: 650; }
 .map-place-date-heading small { color: var(--primary-text); font-size: .64rem; font-weight: 750; }
 .map-place-date-heading small b { display: inline-block; margin-left: 3px; font-size: .78rem; transition: transform 160ms ease; }
 .map-place-date-heading[aria-expanded="true"] small b { transform: rotate(180deg); }
