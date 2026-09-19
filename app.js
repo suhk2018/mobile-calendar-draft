@@ -153,6 +153,7 @@ let overviewSearchMarker = null;
 let overviewMapRenderToken = 0;
 let overviewCoordinateSearchToken = 0;
 let placeReverseLookupToken = 0;
+let lastOverviewMapInteractionAt = 0;
 let pendingOverviewPlaceKey = '';
 const mapDateGroupExpanded = new Map();
 const holidaysByYear = new Map();
@@ -1253,11 +1254,17 @@ async function initializeOverviewMap(places) {
   });
   overviewSearchMarker = null;
   overviewMapMarkers = new Map();
-  window.naver.maps.Event.addListener(overviewMapInstance, 'click', (event) => {
+  const handleOverviewMapInteraction = (event) => {
+    if (!event?.coord) return;
+    const interactionTime = Date.now();
+    if (interactionTime - lastOverviewMapInteractionAt < 420) return;
+    lastOverviewMapInteractionAt = interactionTime;
     const latitude = typeof event.coord.lat === 'function' ? event.coord.lat() : event.coord.y;
     const longitude = typeof event.coord.lng === 'function' ? event.coord.lng() : event.coord.x;
     showOverviewCoordinateInfo(latitude, longitude);
-  });
+  };
+  window.naver.maps.Event.addListener(overviewMapInstance, 'click', handleOverviewMapInteraction);
+  window.naver.maps.Event.addListener(overviewMapInstance, 'tap', handleOverviewMapInteraction);
   if (!mappedPlaces.length) {
     showOverviewMapNotice('지도에 표시할 위치가 없어요', '기존 장소를 수정해 지도에서 위치를 고르면 여기에 마커가 생겨요.');
     return;
