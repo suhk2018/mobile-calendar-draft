@@ -182,6 +182,22 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .nearby-place-option b { font-size: .7rem; }
 .nearby-place-option small { color: var(--primary-text); font-size: .57rem; }
 .nearby-place-option span { color: var(--text-tertiary); font-size: .59rem; }
+.overview-place-search { display: grid; margin: 4px 0 2px; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.overview-place-search input { width: 100%; min-width: 0; min-height: 38px; padding: 0 11px; border: 1px solid var(--border); border-radius: 11px; outline-color: var(--primary); background: var(--surface-raised); color: var(--text); font-size: .68rem; }
+.overview-place-search button { min-height: 38px; padding: 0 12px; border: 0; border-radius: 11px; background: var(--primary); color: #fff; font-size: .66rem; font-weight: 800; }
+.overview-place-search button:disabled { opacity: .6; }
+.overview-place-search-message { margin: 1px 2px 0; grid-column: 1 / -1; color: var(--text-secondary); font-size: .6rem; line-height: 1.4; }
+.selected-overview-place-card { gap: 7px; }
+.selected-overview-place-card .selected-place-eyebrow { color: var(--primary-text); font-size: .59rem; font-weight: 800; letter-spacing: .08em; }
+.selected-overview-place-card > strong { padding-right: 28px; font-size: 1rem; white-space: normal; }
+.selected-overview-place-card .selected-place-category { color: var(--text-secondary); font-size: .68rem; }
+.selected-place-meta { display: flex; align-items: flex-start; gap: 7px; }
+.selected-place-meta b { flex: none; color: var(--primary-text); font-size: .66rem; }
+.selected-place-meta span { color: var(--text-secondary); font-size: .66rem; }
+.selected-place-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 3px; }
+.selected-place-actions .map-info-link { min-height: 38px; margin: 0; padding: 0 13px; }
+.selected-place-actions .map-info-link.is-primary { background: var(--primary); color: #fff; }
+.selected-overview-place-card .selected-place-note { color: var(--text-tertiary); font-size: .57rem; font-weight: 550; line-height: 1.45; }
 .map-discovery-card { position: relative; z-index: 9; margin-top: 9px; padding: 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: 0 10px 28px rgba(0,0,0,.16); }
 .map-discovery-card[hidden] { display: none; }
 .map-discovery-card .map-info-card { max-width: none; padding: 4px 36px 4px 4px; border: 0; background: transparent; box-shadow: none; }

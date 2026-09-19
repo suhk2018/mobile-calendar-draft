@@ -995,6 +995,22 @@ function nearbyPlaceCandidates(items, latitude, longitude) {
     .slice(0, 3);
 }
 
+function searchedPlaceCandidates(items, latitude, longitude) {
+  return items
+    .map((item) => {
+      const candidateLatitude = Number(item.y);
+      const candidateLongitude = Number(item.x);
+      if (!Number.isFinite(candidateLatitude) || !Number.isFinite(candidateLongitude)) return null;
+      return {
+        ...item,
+        distance: distanceBetweenCoordinates(latitude, longitude, candidateLatitude, candidateLongitude),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 5);
+}
+
 function reverseGeocodeContext(response) {
   const address = response?.v2?.address || {};
   const results = response?.v2?.results || [];
@@ -1010,7 +1026,107 @@ function formatPlaceDistance(distance) {
   return distance < 1000 ? `${Math.max(1, Math.round(distance))}m` : `${(distance / 1000).toFixed(1)}km`;
 }
 
-function createNearbyPlaceInfoCard(candidates, context) {
+function createOverviewPlaceSearch(context, latitude, longitude) {
+  const form = document.createElement('form');
+  form.className = 'overview-place-search';
+  const input = document.createElement('input');
+  input.type = 'search';
+  input.autocomplete = 'off';
+  input.placeholder = '가게명·장소명 검색';
+  input.setAttribute('aria-label', '지도에서 가게명이나 장소명 검색');
+  const button = document.createElement('button');
+  button.type = 'submit';
+  button.textContent = '검색';
+  form.append(input, button);
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const query = input.value.trim();
+    if (!query) {
+      input.focus();
+      return;
+    }
+    button.disabled = true;
+    button.textContent = '찾는 중';
+    try {
+      const candidates = searchedPlaceCandidates(await fetchNaverPlaceResults(query), latitude, longitude);
+      if (!candidates.length) {
+        const empty = document.createElement('p');
+        empty.className = 'overview-place-search-message';
+        empty.textContent = '검색 결과가 없어요. 가게 이름을 조금 다르게 입력해 보세요.';
+        form.querySelector('.overview-place-search-message')?.remove();
+        form.append(empty);
+        return;
+      }
+      showMapDiscovery(createNearbyPlaceInfoCard(candidates, {
+        ...context,
+        buildingName: `‘${query}’ 검색 결과`,
+      }, latitude, longitude));
+    } catch (error) {
+      console.warn('지도 장소 검색에 실패했어요.', error);
+      const message = document.createElement('p');
+      message.className = 'overview-place-search-message';
+      message.textContent = '장소 검색에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.';
+      form.querySelector('.overview-place-search-message')?.remove();
+      form.append(message);
+    } finally {
+      button.disabled = false;
+      button.textContent = '검색';
+    }
+  });
+  return form;
+}
+
+function createSelectedOverviewPlaceCard(candidate, context) {
+  const card = document.createElement('div');
+  card.className = 'map-info-card selected-overview-place-card';
+
+  const eyebrow = document.createElement('span');
+  eyebrow.className = 'selected-place-eyebrow';
+  eyebrow.textContent = '선택한 장소';
+
+  const title = document.createElement('strong');
+  const placeName = stripSearchMarkup(candidate.title || '') || context.buildingName || '선택한 장소';
+  title.textContent = placeName;
+
+  const category = document.createElement('span');
+  category.className = 'selected-place-category';
+  category.textContent = candidate.category || '장소';
+
+  const meta = document.createElement('div');
+  meta.className = 'selected-place-meta';
+  const distance = document.createElement('b');
+  distance.textContent = formatPlaceDistance(candidate.distance);
+  const address = document.createElement('span');
+  address.textContent = candidate.roadAddress || candidate.jibunAddress || context.addressText;
+  meta.append(distance, address);
+
+  const actions = document.createElement('div');
+  actions.className = 'selected-place-actions';
+  const naverLink = document.createElement('a');
+  naverLink.className = 'map-info-link is-primary';
+  naverLink.href = `https://map.naver.com/p/search/${encodeURIComponent(placeName)}`;
+  naverLink.target = '_blank';
+  naverLink.rel = 'noopener noreferrer';
+  naverLink.textContent = '네이버지도에서 자세히 보기';
+  actions.append(naverLink);
+  if (candidate.link) {
+    const siteLink = document.createElement('a');
+    siteLink.className = 'map-info-link';
+    siteLink.href = candidate.link;
+    siteLink.target = '_blank';
+    siteLink.rel = 'noopener noreferrer';
+    siteLink.textContent = '장소 웹사이트';
+    actions.append(siteLink);
+  }
+
+  const note = document.createElement('small');
+  note.className = 'selected-place-note';
+  note.textContent = '사진·리뷰·영업시간은 네이버지도에서 확인할 수 있어요.';
+  card.append(eyebrow, title, category, meta, actions, note);
+  return card;
+}
+
+function createNearbyPlaceInfoCard(candidates, context, latitude, longitude) {
   const card = document.createElement('div');
   card.className = 'map-info-card nearby-place-info-card';
   const heading = document.createElement('strong');
@@ -1039,27 +1155,24 @@ function createNearbyPlaceInfoCard(candidates, context) {
       overviewSearchMarker?.setPosition(position);
       overviewMapInstance?.panTo(position);
       if (overviewMapInstance?.getZoom() < 16) overviewMapInstance.setZoom(16);
-      const selectedCard = createMapInfoCard(
-        stripSearchMarkup(candidate.title || '') || context.buildingName || '선택한 장소',
-        candidate.roadAddress || candidate.jibunAddress || context.addressText,
-        [candidate.category, formatPlaceDistance(candidate.distance)].filter(Boolean).join(' · '),
-      );
-      if (candidate.link) {
-        const link = document.createElement('a');
-        link.className = 'map-info-link';
-        link.href = candidate.link;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.textContent = '네이버에서 보기';
-        selectedCard.append(link);
-      }
+      const selectedCard = createSelectedOverviewPlaceCard(candidate, context);
       overviewMapInfoWindow?.setContent(selectedCard);
       overviewMapInfoWindow?.open(overviewMapInstance, overviewSearchMarker || position);
-      list.querySelectorAll('.nearby-place-option').forEach((button) => button.classList.toggle('is-selected', button === option));
+      showMapDiscovery(selectedCard.cloneNode(true));
     });
     list.append(option);
   });
-  card.append(heading, address, list);
+  card.append(heading, address, createOverviewPlaceSearch(context, latitude, longitude), list);
+  return card;
+}
+
+function createOverviewPlaceFallback(context, latitude, longitude) {
+  const card = createMapInfoCard(
+    context.buildingName || '이 위치의 주소',
+    context.addressText,
+    '가게 이름을 검색하면 네이버 장소 결과를 볼 수 있어요',
+  );
+  card.append(createOverviewPlaceSearch(context, latitude, longitude));
   return card;
 }
 
@@ -1315,8 +1428,8 @@ function showOverviewCoordinateInfo(latitude, longitude) {
     }
     if (searchToken !== overviewCoordinateSearchToken) return;
     const discoveryContent = candidates.length
-      ? createNearbyPlaceInfoCard(candidates, context)
-      : createMapInfoCard(context.buildingName || '이 위치의 주소', context.addressText, '가까운 가게 후보를 찾지 못했어요');
+      ? createNearbyPlaceInfoCard(candidates, context, latitude, longitude)
+      : createOverviewPlaceFallback(context, latitude, longitude);
     showMapDiscovery(discoveryContent);
   });
 }
