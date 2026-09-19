@@ -204,6 +204,11 @@ h2 { margin-bottom: 0; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.
 .map-discovery-close { position: absolute; z-index: 2; top: 8px; right: 8px; display: grid; width: 30px; height: 30px; padding: 0; place-items: center; border: 0; border-radius: 10px; background: var(--hover); color: var(--text-secondary); font-size: 1.1rem; line-height: 1; }
 .overview-map-frame.is-expanded .map-discovery-card { position: absolute; z-index: 10; right: max(14px, env(safe-area-inset-right)); bottom: max(18px, calc(10px + env(safe-area-inset-bottom))); left: max(14px, env(safe-area-inset-left)); max-height: min(340px, 46dvh); margin: 0; overflow-y: auto; border-radius: 20px; background: color-mix(in srgb, var(--surface) 96%, transparent); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 .map-place-summary { display: grid; gap: 14px; margin-top: 12px; }
+.map-place-summary-toolbar { display: flex; min-height: 34px; padding: 0 4px; align-items: center; justify-content: space-between; gap: 12px; }
+.map-place-summary-toolbar > strong { color: var(--text-secondary); font-size: .69rem; font-weight: 650; }
+.map-place-toggle-all { min-height: 32px; padding: 0 12px; border: 0; border-radius: 11px; background: var(--primary-soft); color: var(--primary-text); font-size: .63rem; font-weight: 750; }
+.map-place-toggle-all:active { transform: scale(.97); }
+.map-place-toggle-all:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .map-place-date-group { display: grid; gap: 7px; }
 .map-place-date-heading { display: flex; width: 100%; padding: 3px 4px 2px; align-items: center; justify-content: space-between; gap: 10px; border: 0; background: transparent; color: var(--text); text-align: left; }
 .map-place-date-heading span { font-size: .8rem; font-weight: 650; }

@@ -1283,7 +1283,35 @@ function renderOverviewPlaceList(places) {
     if (!placesByDate.has(place.meetingDate)) placesByDate.set(place.meetingDate, []);
     placesByDate.get(place.meetingDate).push(place);
   });
-  Array.from(placesByDate.entries()).forEach(([dateKey, datePlaces], groupIndex) => {
+  const dateEntries = Array.from(placesByDate.entries());
+  const renderedGroups = [];
+  const toolbar = document.createElement('div');
+  toolbar.className = 'map-place-summary-toolbar';
+  const toolbarTitle = document.createElement('strong');
+  toolbarTitle.textContent = '날짜별 방문 기록';
+  const toggleAllButton = document.createElement('button');
+  toggleAllButton.type = 'button';
+  toggleAllButton.className = 'map-place-toggle-all';
+  toolbar.append(toolbarTitle, toggleAllButton);
+  mapPlaceSummary.append(toolbar);
+
+  const syncToggleAllButton = () => {
+    const allExpanded = renderedGroups.length > 0
+      && renderedGroups.every(({ heading }) => heading.getAttribute('aria-expanded') === 'true');
+    toggleAllButton.textContent = allExpanded ? '전체 접기' : '전체 펼치기';
+    toggleAllButton.setAttribute('aria-label', allExpanded ? '모든 날짜의 장소 목록 접기' : '모든 날짜의 장소 목록 펼치기');
+  };
+  toggleAllButton.addEventListener('click', () => {
+    const shouldExpand = !renderedGroups.every(({ heading }) => heading.getAttribute('aria-expanded') === 'true');
+    renderedGroups.forEach(({ dateKey, heading, placeGroup }) => {
+      mapDateGroupExpanded.set(dateKey, shouldExpand);
+      heading.setAttribute('aria-expanded', String(shouldExpand));
+      placeGroup.hidden = !shouldExpand;
+    });
+    syncToggleAllButton();
+  });
+
+  dateEntries.forEach(([dateKey, datePlaces], groupIndex) => {
     const group = document.createElement('section');
     group.className = 'map-place-date-group';
     const heading = document.createElement('button');
@@ -1301,7 +1329,9 @@ function renderOverviewPlaceList(places) {
       mapDateGroupExpanded.set(dateKey, nextExpanded);
       heading.setAttribute('aria-expanded', String(nextExpanded));
       placeGroup.hidden = !nextExpanded;
+      syncToggleAllButton();
     });
+    renderedGroups.push({ dateKey, heading, placeGroup });
     group.append(heading, placeGroup);
     datePlaces.forEach((place) => {
       const card = document.createElement('button');
@@ -1325,6 +1355,7 @@ function renderOverviewPlaceList(places) {
     });
     mapPlaceSummary.append(group);
   });
+  syncToggleAllButton();
 }
 
 async function initializeOverviewMap(places) {
