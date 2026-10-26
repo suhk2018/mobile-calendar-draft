@@ -4,15 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f4f6f8" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="캘린더" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>캘린더</title>
-    <link rel="manifest" href="manifest.webmanifest?v=65" />
-    <link rel="icon" href="icon.svg?v=65" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=65" />
-    <link rel="stylesheet" href="styles.css?v=65" />
+    <link id="appManifest" rel="manifest" href="manifest.webmanifest?v=67" />
+    <link rel="icon" href="icon.svg?v=67" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=67" />
+    <link rel="stylesheet" href="styles.css?v=67" />
     <script>
       try {
         const savedTheme = localStorage.getItem('calendar-theme-v1');
@@ -20,6 +21,8 @@
         document.documentElement.dataset.theme = initialTheme;
         const initialThemeColor = initialTheme === 'dark' ? '#101214' : '#f4f6f8';
         document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => meta.setAttribute('content', initialThemeColor));
+        document.querySelector('#appManifest')?.setAttribute('href', `${initialTheme === 'dark' ? 'manifest-dark.webmanifest' : 'manifest.webmanifest'}?v=67`);
+        document.documentElement.style.backgroundColor = initialThemeColor;
         if (localStorage.getItem('calendar-scope-v1') === 'shared') document.documentElement.dataset.restoringCalendar = 'shared';
       } catch {}
     </script>
@@ -84,22 +87,74 @@
       <section class="memo-panel" id="memoView" aria-labelledby="memoViewTitle" hidden>
         <div class="memo-view-heading">
           <div>
-            <p class="eyebrow">QUICK MEMO</p>
-            <h2 id="memoViewTitle">우리의 메모</h2>
+            <p class="eyebrow">JUST FOR US</p>
+            <h2 id="memoViewTitle">우리</h2>
           </div>
-          <span class="memo-count" id="memoCount">0개</span>
+          <span class="memo-count" id="bucketCount">0개</span>
         </div>
-        <p class="memo-view-description" id="memoViewDescription">함께 기억할 짧은 내용을 남겨보세요.</p>
-        <form class="quick-memo-form" id="quickMemoForm">
-          <label class="sr-only" for="quickMemoInput">새 메모</label>
-          <textarea id="quickMemoInput" maxlength="500" rows="3" placeholder="잊지 말아야 할 내용을 적어보세요"></textarea>
-          <div class="quick-memo-actions">
-            <small><span id="quickMemoLength">0</span>/500</small>
-            <button type="submit">메모 남기기</button>
+        <p class="memo-view-description" id="memoViewDescription">둘만의 질문에 답하고 함께하고 싶은 일을 모아보세요.</p>
+
+        <section class="couple-question-card" aria-labelledby="todayQuestionTitle">
+          <div class="couple-feature-heading">
+            <div>
+              <span>오늘의 질문</span>
+              <strong id="todayQuestionTitle">서로에게 가장 고마웠던 순간은 언제인가요?</strong>
+            </div>
+            <span class="question-day-badge" id="questionDayBadge">DAY 1</span>
           </div>
-        </form>
-        <p class="form-error memo-form-error" id="memoFormError" role="alert" hidden></p>
-        <div class="memo-list" id="memoList" aria-live="polite"></div>
+          <div class="question-answer-list" id="questionAnswerList" aria-live="polite"></div>
+          <form class="question-answer-form" id="questionAnswerForm">
+            <label class="sr-only" for="questionAnswerInput">오늘의 질문 답변</label>
+            <textarea id="questionAnswerInput" maxlength="500" rows="3" placeholder="내 답변을 남겨보세요"></textarea>
+            <div class="question-answer-actions">
+              <small>둘 다 답하면 서로의 답이 보여요</small>
+              <button type="submit">답변 저장</button>
+            </div>
+          </form>
+          <p class="form-error" id="questionAnswerError" role="alert" hidden></p>
+        </section>
+
+        <section class="bucket-section" aria-labelledby="bucketSectionTitle">
+          <div class="bucket-section-heading">
+            <div>
+              <span>BUCKET LIST</span>
+              <h3 id="bucketSectionTitle">우리의 버킷리스트</h3>
+            </div>
+            <div class="bucket-filter" id="bucketFilter" aria-label="버킷리스트 상태 필터">
+              <button type="button" data-status="all" class="is-active">전체</button>
+              <button type="button" data-status="wish">하고 싶어요</button>
+              <button type="button" data-status="planned">계획 중</button>
+              <button type="button" data-status="done">완료</button>
+            </div>
+          </div>
+          <details class="bucket-add-card" id="bucketAddCard">
+            <summary>＋ 새 버킷 추가</summary>
+            <form id="bucketForm">
+              <label>하고 싶은 일<input id="bucketTitle" name="title" type="text" maxlength="80" placeholder="예: 제주도에서 일주일 살기" required /></label>
+              <div class="bucket-form-row">
+                <label>예정일 <span class="optional-label">선택하면 캘린더에 추가</span><input id="bucketDate" name="plannedDate" type="date" /></label>
+                <label>장소 <span class="optional-label">선택</span><input id="bucketPlace" name="placeName" type="text" maxlength="80" placeholder="예: 제주도" /></label>
+              </div>
+              <p class="form-error" id="bucketFormError" role="alert" hidden></p>
+              <button class="save-button" type="submit">버킷에 담기</button>
+            </form>
+          </details>
+          <div class="bucket-list" id="bucketList" aria-live="polite"></div>
+        </section>
+
+        <details class="legacy-memo-section">
+          <summary>이전 메모 <span class="memo-count" id="memoCount">0개</span></summary>
+          <form class="quick-memo-form" id="quickMemoForm">
+            <label class="sr-only" for="quickMemoInput">새 메모</label>
+            <textarea id="quickMemoInput" maxlength="500" rows="3" placeholder="간단한 메모를 남겨보세요"></textarea>
+            <div class="quick-memo-actions">
+              <small><span id="quickMemoLength">0</span>/500</small>
+              <button type="submit">메모 남기기</button>
+            </div>
+          </form>
+          <p class="form-error memo-form-error" id="memoFormError" role="alert" hidden></p>
+          <div class="memo-list" id="memoList" aria-live="polite"></div>
+        </details>
       </section>
 
       <div class="agenda-backdrop" id="agendaBackdrop" hidden></div>
@@ -283,8 +338,8 @@
         <span>지도</span>
       </button>
       <button class="bottom-navigation-button" id="memoTabButton" type="button" aria-pressed="false">
-        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>
-        <span>메모</span>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 20s-7-4.35-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.65-7 10-7 10Z"/></svg>
+        <span>우리</span>
       </button>
       <button class="bottom-navigation-button" id="menuButton" type="button" aria-label="캘린더 목록 열기" aria-expanded="false">
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
@@ -386,9 +441,9 @@
       </button>
     </template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=65"></script>
-    <script src="map-config.js?v=65"></script>
-    <script src="shared-calendar.js?v=65"></script>
-    <script src="app.js?v=65"></script>
+    <script src="supabase-config.js?v=67"></script>
+    <script src="map-config.js?v=67"></script>
+    <script src="shared-calendar.js?v=67"></script>
+    <script src="app.js?v=67"></script>
   </body>
 </html>

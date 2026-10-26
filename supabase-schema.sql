@@ -64,12 +64,37 @@ create table public.couple_notes (
   created_at timestamptz not null default now()
 );
 
+create table public.couple_bucket_items (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references public.couples(id) on delete cascade,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  title text not null check (char_length(trim(title)) between 1 and 80),
+  status text not null default 'wish' check (status in ('wish', 'planned', 'done')),
+  planned_date date,
+  place_name text not null default '' check (char_length(place_name) <= 80),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.couple_question_answers (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references public.couples(id) on delete cascade,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  question_key text not null check (char_length(question_key) between 1 and 40),
+  answer text not null check (char_length(trim(answer)) between 1 and 500),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (couple_id, question_key, created_by)
+);
+
 alter table public.couples enable row level security;
 alter table public.couple_members enable row level security;
 alter table public.events enable row level security;
 alter table public.meeting_days enable row level security;
 alter table public.meeting_places enable row level security;
 alter table public.couple_notes enable row level security;
+alter table public.couple_bucket_items enable row level security;
+alter table public.couple_question_answers enable row level security;
 
 create function public.is_couple_member(target_couple uuid)
 returns boolean language sql stable security definer set search_path = public
@@ -92,10 +117,19 @@ create policy "members delete meeting places" on public.meeting_places for delet
 create policy "members view couple notes" on public.couple_notes for select using (public.is_couple_member(couple_id));
 create policy "members add couple notes" on public.couple_notes for insert with check (public.is_couple_member(couple_id) and created_by = auth.uid());
 create policy "members delete couple notes" on public.couple_notes for delete using (public.is_couple_member(couple_id));
+create policy "members view bucket items" on public.couple_bucket_items for select using (public.is_couple_member(couple_id));
+create policy "members add bucket items" on public.couple_bucket_items for insert with check (public.is_couple_member(couple_id) and created_by = auth.uid());
+create policy "members update bucket items" on public.couple_bucket_items for update using (public.is_couple_member(couple_id)) with check (public.is_couple_member(couple_id));
+create policy "members delete bucket items" on public.couple_bucket_items for delete using (public.is_couple_member(couple_id));
+create policy "members view question answers" on public.couple_question_answers for select using (public.is_couple_member(couple_id));
+create policy "members add own question answers" on public.couple_question_answers for insert with check (public.is_couple_member(couple_id) and created_by = auth.uid());
+create policy "members update own question answers" on public.couple_question_answers for update using (public.is_couple_member(couple_id) and created_by = auth.uid()) with check (public.is_couple_member(couple_id) and created_by = auth.uid());
 
 grant select, insert, update, delete on public.meeting_days to authenticated;
 grant select, insert, update, delete on public.meeting_places to authenticated;
 grant select, insert, delete on public.couple_notes to authenticated;
+grant select, insert, update, delete on public.couple_bucket_items to authenticated;
+grant select, insert, update on public.couple_question_answers to authenticated;
 
 create function public.create_couple(couple_name text)
 returns uuid language plpgsql security definer set search_path = public
@@ -202,3 +236,5 @@ alter publication supabase_realtime add table public.couple_members;
 alter publication supabase_realtime add table public.meeting_days;
 alter publication supabase_realtime add table public.meeting_places;
 alter publication supabase_realtime add table public.couple_notes;
+alter publication supabase_realtime add table public.couple_bucket_items;
+alter publication supabase_realtime add table public.couple_question_answers;

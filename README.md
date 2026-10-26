@@ -45,8 +45,10 @@
 - 장소 선택 지도를 전체 화면으로 확대해 정확한 위치를 터치로 선택
 - 전체 화면 지도의 `축소` 버튼 또는 휴대폰 뒤로가기로 원래 크기로 복귀
 - 가게명·도로명·지번을 검색해 결과를 누르면 장소 이름, 주소와 지도 마커를 자동 입력
-- 하단 `캘린더 / 지도 / 메모 / 목록` 탭으로 화면을 전환하고 한 손으로 캘린더 목록 열기
-- `메모` 탭에서 개인 메모 또는 커플이 함께 보는 짧은 공유 메모 작성·삭제
+- 하단 `캘린더 / 지도 / 우리 / 목록` 탭으로 화면을 전환하고 한 손으로 캘린더 목록 열기
+- `우리` 탭에서 매일 바뀌는 질문에 각자 답하고, 둘 다 답변하면 서로의 답변 공개
+- 함께하고 싶은 일을 버킷리스트에 담고 `하고 싶어요 / 계획 중 / 완료` 상태와 예정일·장소 관리
+- 기존 개인·공유 메모는 `우리` 탭의 접힌 이전 메모 영역에서 계속 확인
 - 지도 탭의 날짜 제목을 누르면 그날 방문한 모든 위치를 지도에 한 번에 표시
 - 날짜 상세의 위·아래 버튼으로 방문 장소 순서를 바꾸고 지도 번호에도 같은 순서 반영
 - 방문 지도를 전체 화면으로 확대하고 주소를 검색하거나 지도에서 선택한 위치의 주소 확인
@@ -110,6 +112,7 @@ supabase-birthday-migration.sql 공유 캘린더 구성원의 생일 마이그�
 supabase-event-memo-migration.sql 공유 일정 메모 마이그레이션
 supabase-meeting-places-migration.sql 만난 날과 방문 장소 마이그레이션
 supabase-notes-migration.sql       커플 공유 메모 마이그레이션
+supabase-together-features-migration.sql 오늘의 질문과 버킷리스트 마이그레이션
 ```
 
 별도의 빌드 과정 없이 정적 파일을 GitHub Pages로 배포합니다. Supabase가 연결되지 않은 동안에는 일정이 브라우저의 `localStorage`에 저장됩니다.
@@ -123,7 +126,7 @@ supabase-notes-migration.sql       커플 공유 메모 마이그레이션
 5. 변경 내용을 GitHub에 푸시한 뒤 각자 회원가입합니다.
 6. 한 명이 공유 캘린더를 만들고, 표시된 초대 코드를 상대방에게 전달합니다.
 
-기존 Supabase 프로젝트를 사용 중이라면 SQL Editor에서 `supabase-multi-calendar-migration.sql`, `supabase-delete-calendar-migration.sql`, `supabase-rename-calendar-migration.sql`, `supabase-anniversary-migration.sql`, `supabase-birthday-migration.sql`, `supabase-event-memo-migration.sql`, `supabase-meeting-places-migration.sql`, `supabase-notes-migration.sql`을 한 번씩 실행해야 다중 공유 캘린더, 추가 색상, 삭제·나가기, 이름 변경, D-day, 생일, 일정 메모, 방문 장소와 공유 메모 기능을 사용할 수 있습니다. 장소 마이그레이션은 기존 하트 기록을 새 만난 날 테이블로 자동 이전합니다.
+기존 Supabase 프로젝트를 사용 중이라면 SQL Editor에서 `supabase-multi-calendar-migration.sql`, `supabase-delete-calendar-migration.sql`, `supabase-rename-calendar-migration.sql`, `supabase-anniversary-migration.sql`, `supabase-birthday-migration.sql`, `supabase-event-memo-migration.sql`, `supabase-meeting-places-migration.sql`, `supabase-notes-migration.sql`, `supabase-together-features-migration.sql`을 한 번씩 실행해야 다중 공유 캘린더, 추가 색상, 삭제·나가기, 이름 변경, D-day, 생일, 일정 메모, 방문 장소, 공유 메모, 오늘의 질문과 버킷리스트 기능을 사용할 수 있습니다. 장소 마이그레이션은 기존 하트 기록을 새 만난 날 테이블로 자동 이전합니다.
 
 ## 네이버 지도 연결
 

@@ -95,6 +95,21 @@ const quickMemoInput = document.querySelector('#quickMemoInput');
 const quickMemoLength = document.querySelector('#quickMemoLength');
 const memoFormError = document.querySelector('#memoFormError');
 const memoList = document.querySelector('#memoList');
+const bucketCount = document.querySelector('#bucketCount');
+const todayQuestionTitle = document.querySelector('#todayQuestionTitle');
+const questionDayBadge = document.querySelector('#questionDayBadge');
+const questionAnswerList = document.querySelector('#questionAnswerList');
+const questionAnswerForm = document.querySelector('#questionAnswerForm');
+const questionAnswerInput = document.querySelector('#questionAnswerInput');
+const questionAnswerError = document.querySelector('#questionAnswerError');
+const bucketFilter = document.querySelector('#bucketFilter');
+const bucketAddCard = document.querySelector('#bucketAddCard');
+const bucketForm = document.querySelector('#bucketForm');
+const bucketTitle = document.querySelector('#bucketTitle');
+const bucketDate = document.querySelector('#bucketDate');
+const bucketPlace = document.querySelector('#bucketPlace');
+const bucketFormError = document.querySelector('#bucketFormError');
+const bucketList = document.querySelector('#bucketList');
 const mapOverview = document.querySelector('#mapOverview');
 const overviewMapFrame = document.querySelector('#overviewMapFrame');
 const expandOverviewMapButton = document.querySelector('#expandOverviewMap');
@@ -134,6 +149,10 @@ let sharedMeetingDays = [];
 let personalMemos = loadPersonalMemos();
 let sharedMemos = [];
 let memoTablesReady = true;
+let sharedBucketItems = [];
+let sharedQuestionAnswers = [];
+let togetherTablesReady = true;
+let activeBucketFilter = 'all';
 let meetingTablesReady = true;
 let events = personalEvents;
 let sharedCalendars = [];
@@ -158,6 +177,28 @@ let pendingOverviewPlaceKey = '';
 const mapDateGroupExpanded = new Map();
 const holidaysByYear = new Map();
 const maxCalendarEventLanes = 5;
+const dailyCoupleQuestions = [
+  '서로에게 가장 고마웠던 순간은 언제인가요?',
+  '우리 둘이 꼭 다시 가고 싶은 장소는 어디인가요?',
+  '요즘 상대방에게 가장 듣고 싶은 말은 무엇인가요?',
+  '함께 도전해 보고 싶은 새로운 취미가 있나요?',
+  '처음 만났을 때 상대방의 첫인상은 어땠나요?',
+  '우리의 평범한 일상 중 가장 좋아하는 순간은 언제인가요?',
+  '올해가 끝나기 전에 함께 이루고 싶은 일은 무엇인가요?',
+  '상대방의 어떤 점을 닮고 싶나요?',
+  '둘만의 기념일을 하나 더 만든다면 어떤 날이 좋을까요?',
+  '지금 당장 함께 여행을 떠난다면 어디로 가고 싶나요?',
+  '상대방이 해준 말 중 오래 기억에 남은 말은 무엇인가요?',
+  '우리 관계를 한 단어로 표현한다면 무엇인가요?',
+  '함께 먹었던 음식 중 가장 기억에 남는 것은 무엇인가요?',
+  '10년 뒤 우리는 어떤 모습이면 좋겠나요?',
+  '요즘 상대방과 함께해서 가장 행복했던 일은 무엇인가요?',
+  '서로에게 만들어 주고 싶은 작은 습관이 있나요?',
+  '다음 데이트에서 꼭 해보고 싶은 것은 무엇인가요?',
+  '상대방에게 아직 말하지 못한 칭찬이 있나요?',
+  '우리만 알고 있는 가장 웃긴 추억은 무엇인가요?',
+  '오늘 상대방에게 해주고 싶은 말은 무엇인가요?',
+];
 
 history.replaceState({ ...(history.state || {}), [appHistoryLayerKey]: 'root' }, '');
 
@@ -1506,13 +1547,168 @@ function formatMemoTime(value) {
   }).format(date);
 }
 
+function todayQuestion() {
+  const dayNumber = Math.floor(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86400000);
+  const index = ((dayNumber % dailyCoupleQuestions.length) + dailyCoupleQuestions.length) % dailyCoupleQuestions.length;
+  return {
+    key: toKey(today),
+    text: dailyCoupleQuestions[index],
+    number: index + 1,
+  };
+}
+
+function renderQuestionView() {
+  const question = todayQuestion();
+  const canUseTogether = calendarScope === 'shared' && activeSharedCalendarId && togetherTablesReady;
+  const answers = sharedQuestionAnswers.filter((answer) => answer.questionKey === question.key);
+  const myAnswer = answers.find((answer) => answer.isMine);
+  const partnerAnswer = answers.find((answer) => !answer.isMine);
+  const bothAnswered = Boolean(myAnswer && partnerAnswer);
+  todayQuestionTitle.textContent = question.text;
+  questionDayBadge.textContent = `Q${String(question.number).padStart(2, '0')}`;
+  questionAnswerList.replaceChildren();
+
+  const appendAnswer = (label, text, locked = false) => {
+    const card = document.createElement('article');
+    card.className = `question-answer-card${locked ? ' is-locked' : ''}`;
+    const author = document.createElement('span');
+    author.textContent = label;
+    const content = document.createElement('p');
+    content.textContent = text;
+    card.append(author, content);
+    questionAnswerList.append(card);
+  };
+
+  if (calendarScope !== 'shared') {
+    appendAnswer('공유 캘린더가 필요해요', '함께 쓰는 캘린더를 선택하면 두 사람이 같은 질문에 답할 수 있어요.', true);
+  } else if (!togetherTablesReady) {
+    appendAnswer('준비가 필요해요', '우리 기능용 저장 공간을 연결한 뒤 질문과 버킷리스트를 사용할 수 있어요.', true);
+  } else {
+    appendAnswer('나의 답변', myAnswer?.answer || '아직 답변하지 않았어요.', !myAnswer);
+    appendAnswer('상대방의 답변', bothAnswered ? partnerAnswer.answer : '둘 다 답변하면 여기에서 공개돼요.', !bothAnswered);
+  }
+
+  questionAnswerInput.disabled = !canUseTogether;
+  questionAnswerForm.querySelector('button[type="submit"]').disabled = !canUseTogether;
+  if (document.activeElement !== questionAnswerInput) questionAnswerInput.value = myAnswer?.answer || '';
+  questionAnswerForm.querySelector('button[type="submit"]').textContent = myAnswer ? '답변 수정' : '답변 저장';
+}
+
+const bucketStatusLabels = {
+  wish: '하고 싶어요',
+  planned: '계획 중',
+  done: '완료',
+};
+
+function bucketStatusIcon(status) {
+  if (status === 'done') return '✓';
+  if (status === 'planned') return '◷';
+  return '♡';
+}
+
+function formatBucketDate(value) {
+  if (!value) return '';
+  const date = fromKey(value);
+  return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
+}
+
+function renderBucketList() {
+  const canUseTogether = calendarScope === 'shared' && activeSharedCalendarId && togetherTablesReady;
+  const bucketItems = calendarScope === 'shared' ? sharedBucketItems : [];
+  bucketCount.textContent = `${bucketItems.length}개`;
+  bucketForm.querySelectorAll('input, button').forEach((element) => { element.disabled = !canUseTogether; });
+  bucketList.replaceChildren();
+  if (calendarScope !== 'shared') {
+    const empty = document.createElement('p');
+    empty.className = 'bucket-empty';
+    empty.textContent = '공유 캘린더를 선택하면 둘만의 버킷리스트를 만들 수 있어요.';
+    bucketList.append(empty);
+    return;
+  }
+  if (!togetherTablesReady) {
+    const empty = document.createElement('p');
+    empty.className = 'bucket-empty';
+    empty.textContent = '우리 기능용 Supabase 마이그레이션을 한 번 실행해 주세요.';
+    bucketList.append(empty);
+    return;
+  }
+  const visibleItems = bucketItems.filter((item) => activeBucketFilter === 'all' || item.status === activeBucketFilter);
+  if (!visibleItems.length) {
+    const empty = document.createElement('p');
+    empty.className = 'bucket-empty';
+    empty.textContent = activeBucketFilter === 'all' ? '아직 담아둔 버킷이 없어요. 함께하고 싶은 일을 추가해 보세요.' : '이 상태의 버킷이 아직 없어요.';
+    bucketList.append(empty);
+    return;
+  }
+  const statusOrder = { planned: 0, wish: 1, done: 2 };
+  [...visibleItems]
+    .sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || String(a.plannedDate || '9999').localeCompare(String(b.plannedDate || '9999')) || String(b.createdAt).localeCompare(String(a.createdAt)))
+    .forEach((item) => {
+      const card = document.createElement('article');
+      card.className = `bucket-card${item.status === 'done' ? ' is-done' : ''}`;
+      const main = document.createElement('div');
+      main.className = 'bucket-card-main';
+      const statusButton = document.createElement('button');
+      statusButton.type = 'button';
+      statusButton.className = 'bucket-status-button';
+      statusButton.textContent = bucketStatusIcon(item.status);
+      statusButton.setAttribute('aria-label', `${item.title} 상태 변경`);
+      statusButton.addEventListener('click', async () => {
+        const nextStatus = item.status === 'wish' ? 'planned' : item.status === 'planned' ? 'done' : 'wish';
+        statusButton.disabled = true;
+        try {
+          await window.sharedCalendar.updateBucketItem(item.id, { status: nextStatus });
+        } catch (error) {
+          console.error(error);
+          showCalendarToast('버킷 상태를 변경하지 못했어요.', true);
+          statusButton.disabled = false;
+        }
+      });
+      const copy = document.createElement('div');
+      copy.className = 'bucket-card-copy';
+      const title = document.createElement('strong');
+      title.className = 'bucket-card-title';
+      title.textContent = item.title;
+      const meta = document.createElement('span');
+      meta.className = 'bucket-card-meta';
+      meta.textContent = [formatBucketDate(item.plannedDate), item.placeName, item.authorLabel && `${item.authorLabel}가 추가`].filter(Boolean).join(' · ') || '날짜와 장소는 나중에 정해도 돼요';
+      copy.append(title, meta);
+      main.append(statusButton, copy);
+      const footer = document.createElement('div');
+      footer.className = 'bucket-card-footer';
+      const status = document.createElement('span');
+      status.className = 'bucket-status-label';
+      status.textContent = bucketStatusLabels[item.status] || bucketStatusLabels.wish;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'bucket-delete-button';
+      remove.textContent = '삭제';
+      remove.addEventListener('click', async () => {
+        if (!window.confirm(`'${item.title}'을(를) 버킷리스트에서 삭제할까요?`)) return;
+        remove.disabled = true;
+        try {
+          await window.sharedCalendar.deleteBucketItem(item.id);
+        } catch (error) {
+          console.error(error);
+          showCalendarToast('버킷을 삭제하지 못했어요.', true);
+          remove.disabled = false;
+        }
+      });
+      footer.append(status, remove);
+      card.append(main, footer);
+      bucketList.append(card);
+    });
+}
+
 function renderMemoView() {
   const activeCalendar = sharedCalendars.find((calendar) => calendar.id === activeSharedCalendarId);
   const memos = calendarScope === 'shared' ? sharedMemos : personalMemos;
+  renderQuestionView();
+  renderBucketList();
   memoCount.textContent = `${memos.length}개`;
   memoViewDescription.textContent = calendarScope === 'shared' && activeCalendar
-    ? `${activeCalendar.name}에서 함께 확인하는 메모예요.`
-    : '이 기기에서만 확인하는 간단한 메모예요.';
+    ? `${activeCalendar.name}에서 둘만의 질문과 하고 싶은 일을 함께 나눠요.`
+    : '공유 캘린더를 선택하면 둘만의 공간을 사용할 수 있어요.';
   quickMemoInput.disabled = calendarScope === 'shared' && !memoTablesReady;
   quickMemoForm.querySelector('button[type="submit"]').disabled = quickMemoInput.disabled;
   memoList.replaceChildren();
@@ -2178,6 +2374,9 @@ function applyTheme(theme) {
   themeButton.setAttribute('aria-label', isDark ? '라이트 모드로 전환' : '다크 모드로 전환');
   const themeColor = isDark ? '#101214' : '#f4f6f8';
   document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => meta.setAttribute('content', themeColor));
+  document.documentElement.style.backgroundColor = themeColor;
+  document.body.style.backgroundColor = themeColor;
+  document.querySelector('#appManifest')?.setAttribute('href', `${isDark ? 'manifest-dark.webmanifest' : 'manifest.webmanifest'}?v=67`);
 }
 
 function toggleTheme() {
@@ -2227,6 +2426,65 @@ quickMemoForm.addEventListener('submit', async (event) => {
   } finally {
     saveButton.disabled = calendarScope === 'shared' && !memoTablesReady;
   }
+});
+questionAnswerForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const answer = questionAnswerInput.value.trim();
+  if (!answer) {
+    questionAnswerError.textContent = '오늘의 질문에 대한 답변을 입력해 주세요.';
+    questionAnswerError.hidden = false;
+    questionAnswerInput.focus();
+    return;
+  }
+  const saveButton = questionAnswerForm.querySelector('button[type="submit"]');
+  questionAnswerError.hidden = true;
+  saveButton.disabled = true;
+  try {
+    await window.sharedCalendar.saveQuestionAnswer(todayQuestion().key, answer);
+    showCalendarToast('답변을 저장했어요.');
+  } catch (error) {
+    console.error(error);
+    questionAnswerError.textContent = '답변을 저장하지 못했어요. 인터넷 연결을 확인해 주세요.';
+    questionAnswerError.hidden = false;
+  } finally {
+    saveButton.disabled = calendarScope !== 'shared' || !togetherTablesReady;
+  }
+});
+bucketForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const title = bucketTitle.value.trim();
+  if (!title) {
+    bucketFormError.textContent = '함께하고 싶은 일을 입력해 주세요.';
+    bucketFormError.hidden = false;
+    bucketTitle.focus();
+    return;
+  }
+  const saveButton = bucketForm.querySelector('button[type="submit"]');
+  bucketFormError.hidden = true;
+  saveButton.disabled = true;
+  try {
+    await window.sharedCalendar.addBucketItem({
+      title,
+      plannedDate: bucketDate.value || null,
+      placeName: bucketPlace.value.trim(),
+    });
+    bucketForm.reset();
+    bucketAddCard.open = false;
+    showCalendarToast('우리의 버킷리스트에 담았어요.');
+  } catch (error) {
+    console.error(error);
+    bucketFormError.textContent = '버킷을 저장하지 못했어요. 인터넷 연결을 확인해 주세요.';
+    bucketFormError.hidden = false;
+  } finally {
+    saveButton.disabled = calendarScope !== 'shared' || !togetherTablesReady;
+  }
+});
+bucketFilter.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-status]');
+  if (!button) return;
+  activeBucketFilter = button.dataset.status;
+  bucketFilter.querySelectorAll('button[data-status]').forEach((item) => item.classList.toggle('is-active', item === button));
+  renderBucketList();
 });
 document.querySelector('#closeComposer').addEventListener('click', closeComposer);
 addEventButton.addEventListener('click', () => openComposer());
@@ -2772,6 +3030,12 @@ Promise.resolve(window.sharedCalendar?.init({
   onNotes(nextNotes, tablesReady) {
     sharedMemos = nextNotes;
     memoTablesReady = tablesReady;
+    if (calendarScope === 'shared') renderMemoView();
+  },
+  onTogetherData(nextData, tablesReady) {
+    sharedBucketItems = nextData.bucketItems || [];
+    sharedQuestionAnswers = nextData.questionAnswers || [];
+    togetherTablesReady = tablesReady;
     if (calendarScope === 'shared') renderMemoView();
   },
   onConnection(connected) {

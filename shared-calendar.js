@@ -13,10 +13,14 @@
   let calendarActivatedHandler = () => {};
   let meetingDaysHandler = () => {};
   let notesHandler = () => {};
+  let togetherDataHandler = () => {};
   let meetingDays = [];
   let notes = [];
+  let bucketItems = [];
+  let questionAnswers = [];
   let meetingTablesAvailable = true;
   let notesTableAvailable = true;
+  let togetherTablesAvailable = true;
   const byId = (id) => document.getElementById(id);
   const ui = {};
 
@@ -60,6 +64,33 @@
     };
   }
 
+  function mapBucketItem(row) {
+    const isMine = row.created_by === session?.user?.id;
+    return {
+      id: row.id,
+      title: row.title,
+      status: row.status || 'wish',
+      plannedDate: row.planned_date,
+      placeName: row.place_name || '',
+      createdAt: row.created_at,
+      authorId: row.created_by,
+      authorLabel: isMine ? '나' : '상대방',
+    };
+  }
+
+  function mapQuestionAnswer(row) {
+    const isMine = row.created_by === session?.user?.id;
+    return {
+      id: row.id,
+      questionKey: row.question_key,
+      answer: row.answer,
+      createdAt: row.created_at,
+      authorId: row.created_by,
+      authorLabel: isMine ? '나' : '상대방',
+      isMine,
+    };
+  }
+
   function legacyMeetingDays(rows) {
     return rows
       .filter((row) => row.memo === meetingDayMemo)
@@ -72,6 +103,10 @@
 
   function notesTableMissing(error) {
     return ['42P01', 'PGRST200', 'PGRST205'].includes(error?.code) || /couple_notes/i.test(error?.message || '');
+  }
+
+  function togetherTableMissing(error) {
+    return ['42P01', 'PGRST200', 'PGRST205'].includes(error?.code) || /couple_bucket_items|couple_question_answers/i.test(error?.message || '');
   }
 
   function fromDateKey(key) {
@@ -149,6 +184,32 @@
     notesHandler(notes, true);
   }
 
+  async function loadTogetherData() {
+    if (!activeCalendar) {
+      bucketItems = [];
+      questionAnswers = [];
+      togetherDataHandler({ bucketItems, questionAnswers }, togetherTablesAvailable);
+      return;
+    }
+    const [bucketResult, answerResult] = await Promise.all([
+      client.from('couple_bucket_items').select('id, couple_id, title, status, planned_date, place_name, created_by, created_at').eq('couple_id', activeCalendar.id).order('created_at', { ascending: false }),
+      client.from('couple_question_answers').select('id, couple_id, question_key, answer, created_by, created_at').eq('couple_id', activeCalendar.id).order('created_at'),
+    ]);
+    const error = bucketResult.error || answerResult.error;
+    if (error) {
+      if (!togetherTableMissing(error)) throw error;
+      togetherTablesAvailable = false;
+      bucketItems = [];
+      questionAnswers = [];
+      togetherDataHandler({ bucketItems, questionAnswers }, false);
+      return;
+    }
+    togetherTablesAvailable = true;
+    bucketItems = bucketResult.data.map(mapBucketItem);
+    questionAnswers = answerResult.data.map(mapQuestionAnswer);
+    togetherDataHandler({ bucketItems, questionAnswers }, true);
+  }
+
   function subscribe() {
     if (channel) client.removeChannel(channel);
     channel = null;
@@ -162,6 +223,11 @@
     }
     if (notesTableAvailable) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table: 'couple_notes', filter: `couple_id=eq.${activeCalendar.id}` }, loadNotes);
+    }
+    if (togetherTablesAvailable) {
+      channel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'couple_bucket_items', filter: `couple_id=eq.${activeCalendar.id}` }, loadTogetherData)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'couple_question_answers', filter: `couple_id=eq.${activeCalendar.id}` }, loadTogetherData);
     }
     channel
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'couples' }, (payload) => {
@@ -186,6 +252,7 @@
     await loadEvents();
     await loadMeetingDays();
     await loadNotes();
+    await loadTogetherData();
     subscribe();
   }
 
@@ -218,6 +285,7 @@
     await loadEvents();
     await loadMeetingDays();
     await loadNotes();
+    await loadTogetherData();
     subscribe();
   }
 
@@ -466,13 +534,14 @@
     }
   }
 
-  async function init({ onEvents, onConnection, onCalendars, onCalendarActivated, onMeetingDays, onNotes }) {
+  async function init({ onEvents, onConnection, onCalendars, onCalendarActivated, onMeetingDays, onNotes, onTogetherData }) {
     eventHandler = onEvents;
     connectionHandler = onConnection || (() => {});
     calendarsHandler = onCalendars || (() => {});
     calendarActivatedHandler = onCalendarActivated || (() => {});
     meetingDaysHandler = onMeetingDays || (() => {});
     notesHandler = onNotes || (() => {});
+    togetherDataHandler = onTogetherData || (() => {});
     ['accountButton', 'accountBackdrop', 'accountSheet', 'closeAccount', 'connectionNotice', 'signedOutView', 'signedInView', 'authForm', 'authError', 'signUpButton', 'accountEmail', 'signOutButton', 'coupleConnectedView', 'coupleSetupView', 'coupleCount', 'coupleList', 'createCoupleForm', 'joinCoupleForm', 'coupleError'].forEach((id) => { ui[id] = byId(id); });
     ui.accountButton.addEventListener('click', openSheet);
     ui.closeAccount.addEventListener('click', closeSheet);
@@ -651,6 +720,88 @@
     return true;
   }
 
+  async function addBucketItem(item) {
+    if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
+    if (!togetherTablesAvailable) throw new Error('우리 기능용 저장 공간이 아직 준비되지 않았어요.');
+    const bucketId = window.crypto.randomUUID();
+    const { error } = await client.from('couple_bucket_items').insert({
+      id: bucketId,
+      couple_id: activeCalendar.id,
+      created_by: session.user.id,
+      title: item.title,
+      status: item.plannedDate ? 'planned' : 'wish',
+      planned_date: item.plannedDate || null,
+      place_name: item.placeName || '',
+    });
+    if (error) throw error;
+    if (item.plannedDate) {
+      const eventTitle = `♡ ${item.title}`.slice(0, 42);
+      const eventMemo = ['버킷리스트에서 만든 일정', item.placeName].filter(Boolean).join(' · ');
+      const { error: eventError } = await client.from('events').insert({
+        id: `bucket-${bucketId}`,
+        couple_id: activeCalendar.id,
+        created_by: session.user.id,
+        title: eventTitle,
+        memo: eventMemo,
+        start_date: item.plannedDate,
+        end_date: item.plannedDate,
+        event_time: null,
+        color: 'pink',
+      });
+      if (eventError) {
+        await client.from('couple_bucket_items').delete().eq('id', bucketId).eq('couple_id', activeCalendar.id);
+        throw eventError;
+      }
+      await loadEvents();
+    }
+    await loadTogetherData();
+    return true;
+  }
+
+  async function updateBucketItem(id, updates) {
+    if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
+    if (!togetherTablesAvailable) throw new Error('우리 기능용 저장 공간이 아직 준비되지 않았어요.');
+    const values = {};
+    if (updates.status && ['wish', 'planned', 'done'].includes(updates.status)) values.status = updates.status;
+    if (typeof updates.title === 'string') values.title = updates.title.trim();
+    if ('plannedDate' in updates) values.planned_date = updates.plannedDate || null;
+    if ('placeName' in updates) values.place_name = updates.placeName || '';
+    const { error } = await client.from('couple_bucket_items').update(values).eq('id', id).eq('couple_id', activeCalendar.id);
+    if (error) throw error;
+    await loadTogetherData();
+    return true;
+  }
+
+  async function deleteBucketItem(id) {
+    if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
+    if (!togetherTablesAvailable) throw new Error('우리 기능용 저장 공간이 아직 준비되지 않았어요.');
+    const item = bucketItems.find((bucketItem) => bucketItem.id === id);
+    if (item?.plannedDate) {
+      const { error: eventError } = await client.from('events').delete().eq('id', `bucket-${id}`).eq('couple_id', activeCalendar.id);
+      if (eventError) throw eventError;
+    }
+    const { error } = await client.from('couple_bucket_items').delete().eq('id', id).eq('couple_id', activeCalendar.id);
+    if (error) throw error;
+    if (item?.plannedDate) await loadEvents();
+    await loadTogetherData();
+    return true;
+  }
+
+  async function saveQuestionAnswer(questionKey, answer) {
+    if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
+    if (!togetherTablesAvailable) throw new Error('우리 기능용 저장 공간이 아직 준비되지 않았어요.');
+    const { error } = await client.from('couple_question_answers').upsert({
+      couple_id: activeCalendar.id,
+      created_by: session.user.id,
+      question_key: questionKey,
+      answer,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'couple_id,question_key,created_by' });
+    if (error) throw error;
+    await loadTogetherData();
+    return true;
+  }
+
   async function setBirthday(birthday) {
     if (!client || !session || !activeCalendar) throw new Error('공유 캘린더에 연결한 뒤 다시 시도해 주세요.');
     const { error } = await client.rpc('set_member_birthday', { target_couple: activeCalendar.id, new_birthday: birthday });
@@ -669,6 +820,10 @@
     reorderMeetingPlaces,
     addMemo,
     deleteMemo,
+    addBucketItem,
+    updateBucketItem,
+    deleteBucketItem,
+    saveQuestionAnswer,
     setBirthday,
     selectCalendar,
     meetingTablesReady: () => meetingTablesAvailable,
