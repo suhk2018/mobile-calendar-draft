@@ -2376,7 +2376,6 @@ function applyTheme(theme) {
   document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => meta.setAttribute('content', themeColor));
   document.documentElement.style.backgroundColor = themeColor;
   document.body.style.backgroundColor = themeColor;
-  document.querySelector('#appManifest')?.setAttribute('href', `${isDark ? 'manifest-dark.webmanifest' : 'manifest.webmanifest'}?v=67`);
 }
 
 function toggleTheme() {
